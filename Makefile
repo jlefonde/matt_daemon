@@ -4,7 +4,7 @@ SOURCES_DIR = srcs
 HEADERS_DIR = includes
 OBJECTS_DIR = objs
 
-SOURCES = Daemon.cpp
+SOURCES = main.cpp
 
 OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=.o))
 
@@ -20,6 +20,8 @@ $(NAME): $(OBJECTS)
 	c++ $(CFLAGS) $(OBJECTS) -o $@
 
 clean:
+	pgrep $(NAME) | xargs -r kill -9
+# 	rm /var/lock/$(NAME).lock
 	$(RM) -r $(OBJECTS_DIR)
 
 fclean: clean
