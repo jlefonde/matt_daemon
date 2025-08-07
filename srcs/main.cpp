@@ -6,7 +6,8 @@
 #include <sys/stat.h>
 
 #define LOCK_FILE_PATH "/var/lock/matt_daemon.lock"
-#define LOG_FILE_PATH "/var/log/matt_daemon.log"
+#define LOG_FOLDER_PATH "/var/log/matt_daemon/"
+#define LOG_FILE_PATH LOG_FOLDER_PATH "matt_daemon.log"
 
 int g_lock_fd = -1;
 
@@ -42,6 +43,24 @@ void write_pid_to_fd(int fd, pid_t pid)
 
 int main(void)
 {
+    std::cout << "Started." << std::endl;
+
+    if (mkdir(LOG_FOLDER_PATH, 0755) == -1)
+    {
+        if (errno != EEXIST)
+        {
+            std::cerr << strerror(errno) << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    int log_fd = open(LOG_FILE_PATH, O_CREAT | O_RDWR | O_APPEND, 0644);
+    if (log_fd == -1)
+    {
+        std::cerr << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
     if (signal(SIGTERM, &signal_handler) == SIG_ERR)
     {
         std::cerr << strerror(errno) << std::endl;
@@ -55,7 +74,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    if (flock(g_lock_fd, LOCK_EX) == -1)
+    if (flock(g_lock_fd, LOCK_EX | LOCK_NB) == -1)
     {
         std::cerr << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);   
@@ -97,15 +116,13 @@ int main(void)
             close(STDERR_FILENO);
             close(STDOUT_FILENO);
 
-            if (open(LOG_FILE_PATH, O_CREAT | O_RDWR, 0644) == -1)
-                exit(EXIT_FAILURE);
-
-            dup(0);
-            dup(0);
+            dup(log_fd);
+            dup(log_fd);
+            dup(log_fd);
 
             while (true)
             {
-                sleep(1);
+                sleep(1000);
             }
         }
         else
