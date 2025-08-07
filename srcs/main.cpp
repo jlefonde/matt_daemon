@@ -1,5 +1,6 @@
 #include <csignal>
 #include <iostream>
+#include <fstream>
 #include <unistd.h>
 #include <string.h>
 #include <sys/file.h>
@@ -43,8 +44,6 @@ void write_pid_to_fd(int fd, pid_t pid)
 
 int main(void)
 {
-    std::cout << "Started." << std::endl;
-
     if (mkdir(LOG_FOLDER_PATH, 0755) == -1)
     {
         if (errno != EEXIST)
@@ -54,50 +53,54 @@ int main(void)
         }
     }
 
-    int log_fd = open(LOG_FILE_PATH, O_CREAT | O_RDWR | O_APPEND, 0644);
-    if (log_fd == -1)
+    std::ofstream log_file;
+    log_file.open(LOG_FILE_PATH, std::ofstream::ate | std::ofstream::app);
+    if (log_file.fail() || log_file.eof())
     {
         std::cerr << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 
+    log_file << "Started." << std::endl;
+
     if (signal(SIGTERM, &signal_handler) == SIG_ERR)
     {
-        std::cerr << strerror(errno) << std::endl;
+        log_file << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 
     g_lock_fd = open(LOCK_FILE_PATH, O_CREAT | O_RDWR, 0644);
     if (g_lock_fd == -1)
     {
-        std::cerr << strerror(errno) << std::endl;
+        log_file << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 
     if (flock(g_lock_fd, LOCK_EX | LOCK_NB) == -1)
     {
+        log_file << "Error file locked." << std::endl;
         std::cerr << strerror(errno) << std::endl;
-        exit(EXIT_FAILURE);   
+        exit(EXIT_FAILURE);
     }
 
     pid_t pid = fork();
     if (pid < 0)
     {
-        std::cerr << strerror(errno) << std::endl;
+        log_file << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
     else if (pid == 0)
     {
         if (setsid() == -1)
         {
-            std::cerr << strerror(errno) << std::endl;
+            log_file << strerror(errno) << std::endl;
             exit(EXIT_FAILURE);
         }
 
         pid = fork();
         if (pid < 0)
         {
-            std::cerr << strerror(errno) << std::endl;
+            log_file << strerror(errno) << std::endl;
             exit(EXIT_FAILURE);
         }
         else if (pid == 0)
@@ -106,7 +109,7 @@ int main(void)
 
             if (chdir("/") == -1)
             {
-                std::cerr << strerror(errno) << std::endl;
+                log_file << strerror(errno) << std::endl;
                 exit(EXIT_FAILURE);
             }
 
@@ -116,9 +119,14 @@ int main(void)
             close(STDERR_FILENO);
             close(STDOUT_FILENO);
 
-            dup(log_fd);
-            dup(log_fd);
-            dup(log_fd);
+            if (open("/dev/null", O_RDWR) == -1)
+            {
+                log_file << strerror(errno) << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            dup(0);
+            dup(0);
 
             while (true)
             {
