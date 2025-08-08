@@ -30,6 +30,7 @@ class Server
         pid_t pid_;
         int socket_fd_;
         int epoll_fd_;
+        bool is_running_;
         struct epoll_event event_;
         std::vector<struct epoll_event> events_;
         TintinReporter& logger_;

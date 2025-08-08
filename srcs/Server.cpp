@@ -1,7 +1,7 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), socket_fd_(-1), epoll_fd_(-1), events_(3), logger_(logger) {}
+Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), socket_fd_(-1), epoll_fd_(-1), is_running_(true), events_(3), logger_(logger) {}
 
 Server::~Server(){}
 
@@ -96,7 +96,7 @@ void Server::run()
     socklen_t *addr_len = NULL;
     char buffer[3072];
 
-    while (true)
+    while (is_running_)
     {
         int nfds = epoll_wait(epoll_fd_, events_.data(), events_.size(), -1);
 		for (int i = 0; i < nfds; i++)
@@ -116,8 +116,8 @@ void Server::run()
                     logger_.log(ERROR, "Failed to add client socket to epoll.");
                     exit(EXIT_FAILURE);
                 }
-                else
-                    logger_.log(INFO, "Client connected.");
+                std::string client_info = "Client " + std::to_string(client_fd) + " connected.";
+                logger_.log(INFO, client_info.c_str());
             }
             else if (events_[i].events & EPOLLIN)
             {
@@ -129,12 +129,27 @@ void Server::run()
                         logger_.log(ERROR, strerror(errno));
                         exit(EXIT_FAILURE);
                     }
-                    logger_.log(INFO, "Client disconnected.");
+                    std::string client_info = "Client " + std::to_string(fd) + " disconnected.";
+                    logger_.log(INFO, client_info.c_str());
                 }
                 else
                 {
-                    std::string user_input = "User input: " + std::string(buffer);
-                    logger_.log(INFO, user_input.c_str());
+                    if (buffer[bytes_read - 1] == '\n')
+                    {
+                        buffer[bytes_read - 1] = '\0';
+                        if (bytes_read > 1 && buffer[bytes_read - 2] == '\r')
+                            buffer[bytes_read - 2] = '\0';
+                    }
+                    else
+                        buffer[bytes_read] = '\0';
+    
+                    if (!strcmp(buffer, "quit"))
+                        stop();
+                    else
+                    {
+                        std::string user_input = "Received from client " + std::to_string(fd) + ": \"" + std::string(buffer) + "\"";
+                        logger_.log(INFO, user_input.c_str());
+                    }
                 }
             }
         }
@@ -143,5 +158,6 @@ void Server::run()
 
 void Server::stop()
 {
+    is_running_ = false;
     // TODO: cleanup server
 }

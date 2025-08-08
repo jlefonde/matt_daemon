@@ -100,6 +100,7 @@ void Daemon::start(int port)
 
             server_ = std::make_unique<Server>(port, pid_, *logger_);
             server_->run();
+            shutdown();
         }
         else
             exit(EXIT_SUCCESS);
