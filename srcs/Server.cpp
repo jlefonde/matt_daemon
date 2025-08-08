@@ -1,7 +1,7 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), listen_fd_(-1), logger_(logger) {}
+Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), socket_fd_(-1), logger_(logger) {}
 
 Server::~Server(){}
 
@@ -25,4 +25,9 @@ void Server::run()
         logger_.log(INFO, "...");
         sleep(10);
     }
+}
+
+void Server::stop()
+{
+    // TODO: cleanup server
 }

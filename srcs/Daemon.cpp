@@ -8,10 +8,11 @@ Daemon& Daemon::getInstance()
 
 static void signal_handler(int sig)
 {
-    std::cout << "Signal handler." << std::endl;
+    Daemon& daemon = Daemon::getInstance();
+    daemon.log(INFO, "Signal handler.");
 
     if (sig == SIGTERM)
-        Daemon::getInstance().shutdown();
+        daemon.shutdown();
 }
 
 static void write_pid_to_fd(int fd, pid_t pid)
@@ -22,6 +23,7 @@ static void write_pid_to_fd(int fd, pid_t pid)
 
 void Daemon::initialize()
 {
+    // TODO: possible exception of logger
     logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
 
     log(INFO, "Started.");
@@ -109,6 +111,8 @@ void Daemon::start(int port)
 void Daemon::shutdown()
 {
     log(INFO, "Quitting.");
+
+    server_->stop();
 
     if (lock_fd_ != -1)
         close(lock_fd_);

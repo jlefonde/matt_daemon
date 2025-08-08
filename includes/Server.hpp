@@ -10,6 +10,7 @@ class Server
         ~Server();
         void log(LogLevel log_level, const char *msg);
         void run();
+        void stop();
         
     private:
         Server() = delete;
@@ -17,7 +18,7 @@ class Server
         Server& operator=(const Server&) = delete;
         int port_;
         pid_t pid_;
-        int listen_fd_;
+        int socket_fd_;
         TintinReporter& logger_;
 };
 

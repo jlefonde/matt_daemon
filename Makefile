@@ -1,4 +1,4 @@
-NAME = matt_daemon
+NAME = MattDaemon
 
 SOURCES_DIR = srcs
 HEADERS_DIR = includes
@@ -24,7 +24,6 @@ $(NAME): $(OBJECTS)
 
 clean:
 	pgrep $(NAME) | xargs -r kill -9
-# 	rm /var/lock/$(NAME).lock
 	$(RM) -r $(OBJECTS_DIR)
 
 fclean: clean
