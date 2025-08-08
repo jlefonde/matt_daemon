@@ -8,7 +8,6 @@ class Server
     public:
         Server(int port, pid_t pid, TintinReporter& logger);
         ~Server();
-        void log(LogLevel log_level, const char *msg);
         void run();
         void stop();
         

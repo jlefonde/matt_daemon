@@ -5,11 +5,6 @@ Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(
 
 Server::~Server(){}
 
-void Server::log(LogLevel log_level, const char *msg)
-{
-    logger_.log(log_level, msg);
-}
-
 void Server::run()
 {
     logger_.log(INFO, "Creating server.");

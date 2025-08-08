@@ -26,25 +26,25 @@ void Daemon::initialize()
     // TODO: possible exception of logger
     logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
 
-    log(INFO, "Started.");
+    logger_->log(INFO, "Started.");
 
     if (signal(SIGTERM, &signal_handler) == SIG_ERR)
     {
-        log(ERROR, strerror(errno));
+        logger_->log(ERROR, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     lock_fd_ = open(LOCK_FILE_PATH, O_CREAT | O_RDWR, 0644);
     if (lock_fd_ == -1)
     {
-        log(ERROR, strerror(errno));
+        logger_->log(ERROR, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if (flock(lock_fd_, LOCK_EX | LOCK_NB) == -1)
     {
-        log(ERROR, "Error file locked.");
-        log(INFO, "Quitting.");
+        logger_->log(ERROR, "Error file locked.");
+        logger_->log(INFO, "Quitting.");
         std::cerr << "Error: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -55,21 +55,21 @@ void Daemon::start(int port)
     pid_t pid = fork();
     if (pid < 0)
     {
-        log(ERROR, strerror(errno));
+        logger_->log(ERROR, strerror(errno));
         exit(EXIT_FAILURE);
     }
     else if (pid == 0)
     {
         if (setsid() == -1)
         {
-            log(ERROR, strerror(errno));
+            logger_->log(ERROR, strerror(errno));
             exit(EXIT_FAILURE);
         }
 
         pid = fork();
         if (pid < 0)
         {
-            log(ERROR, strerror(errno));
+            logger_->log(ERROR, strerror(errno));
             exit(EXIT_FAILURE);
         }
         else if (pid == 0)
@@ -79,7 +79,7 @@ void Daemon::start(int port)
 
             if (chdir("/") == -1)
             {
-                log(ERROR, strerror(errno));
+                logger_->log(ERROR, strerror(errno));
                 exit(EXIT_FAILURE);
             }
 
@@ -91,7 +91,7 @@ void Daemon::start(int port)
 
             if (open("/dev/null", O_RDWR) == -1)
             {
-                log(ERROR, strerror(errno));
+                logger_->log(ERROR, strerror(errno));
                 exit(EXIT_FAILURE);
             }
 
@@ -110,7 +110,7 @@ void Daemon::start(int port)
 
 void Daemon::shutdown()
 {
-    log(INFO, "Quitting.");
+    logger_->log(INFO, "Quitting.");
 
     server_->stop();
 
@@ -119,7 +119,7 @@ void Daemon::shutdown()
 
     if (remove(LOCK_FILE_PATH))
     {
-        log(ERROR, strerror(errno));
+        logger_->log(ERROR, strerror(errno));
         exit(EXIT_FAILURE);          
     }
 
