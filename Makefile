@@ -6,7 +6,8 @@ OBJECTS_DIR = objs
 
 SOURCES = main.cpp \
 			TintinReporter.cpp \
-			Daemon.cpp
+			Daemon.cpp \
+			Server.cpp
 
 OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=.o))
 

@@ -5,8 +5,8 @@ int main(void)
     try
     {
         Daemon &daemon = Daemon::getInstance();
-        daemon.initialize(4242);
-        daemon.start();
+        daemon.initialize();
+        daemon.start(4242);
     }
     catch(const std::exception& e)
     {

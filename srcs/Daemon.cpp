@@ -20,9 +20,8 @@ static void write_pid_to_fd(int fd, pid_t pid)
     write(fd, pid_str.c_str(), pid_str.size());
 }
 
-void Daemon::initialize(int port)
+void Daemon::initialize()
 {
-    port_ = port;
     logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
 
     log(INFO, "Started.");
@@ -43,12 +42,13 @@ void Daemon::initialize(int port)
     if (flock(lock_fd_, LOCK_EX | LOCK_NB) == -1)
     {
         log(ERROR, "Error file locked.");
+        log(INFO, "Quitting.");
         std::cerr << "Error: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 }
 
-void Daemon::start()
+void Daemon::start(int port)
 {
     pid_t pid = fork();
     if (pid < 0)
@@ -72,7 +72,8 @@ void Daemon::start()
         }
         else if (pid == 0)
         {
-            write_pid_to_fd(lock_fd_, getpid());
+            pid_ = getpid();
+            write_pid_to_fd(lock_fd_, pid_);
 
             if (chdir("/") == -1)
             {
@@ -95,10 +96,8 @@ void Daemon::start()
             dup(0);
             dup(0);
 
-            while (true)
-            {
-                sleep(1000);
-            }
+            server_ = std::make_unique<Server>(port, pid_, *logger_);
+            server_->run();
         }
         else
             exit(EXIT_SUCCESS);
