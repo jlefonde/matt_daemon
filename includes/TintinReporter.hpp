@@ -1,7 +1,11 @@
 #ifndef TINTIN_REPORTER_HPP
 #define TINTIN_REPORTER_HPP
 
+#include <stdexcept>
+#include <iostream>
 #include <fstream>
+#include <string.h>
+#include <sys/stat.h>
 
 enum LogLevel
 {
@@ -14,16 +18,17 @@ enum LogLevel
 class TintinReporter
 {
     public:
-        TintinReporter(const std::string& article_name, const std::string& publication_file);
-        TintinReporter(const TintinReporter& reporter);
+        TintinReporter(const std::string& article_name, const LogLevel log_level);
         ~TintinReporter();
-        TintinReporter& operator=(const TintinReporter& reporter);
-        void log(LogLevel log_level, const char *msg);
-
+        void log(LogLevel log_level, const char *article);
+        
     private:
         TintinReporter();
+        TintinReporter(const TintinReporter& reporter) = delete;
+        TintinReporter& operator=(const TintinReporter& reporter) = delete;
         std::string article_name_;
-        std::string publication_file_;
+        std::ofstream log_file_;
+        LogLevel log_level_;
 };
 
 

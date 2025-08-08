@@ -1,31 +1,50 @@
 #include "TintinReporter.hpp"
 
-TintinReporter::TintinReporter(const std::string& article_name, const std::string& publication_file)
+static const char* log_level_str[] = {
+    "DEBUG",
+    "INFO",
+    "WARNING",
+    "ERROR"
+};
+
+static std::string getTimestamp(const char *format)
 {
-    this->article_name_ = article_name;
-    this->publication_file_ = publication_file;
+    time_t now = time(0);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+
+    char timestamp[100];
+    strftime(timestamp, sizeof(timestamp), format, &timeinfo);
+
+    return std::string(timestamp);
 }
 
-TintinReporter::TintinReporter(const TintinReporter& reporter)
+TintinReporter::TintinReporter(const std::string& article_name, const LogLevel log_level)
+    : article_name_(article_name), log_level_(log_level)
 {
-    this->article_name_ = reporter.article_name_;
-    this->publication_file_ = reporter.publication_file_;
-}
-
-TintinReporter::~TintinReporter() {}
-
-TintinReporter& TintinReporter::operator=(const TintinReporter& reporter)
-{
-    if (this != &reporter)
+    std::string log_folder_path = "/var/log/" + article_name_;
+    if (mkdir(log_folder_path.c_str(), 0755) == -1)
     {
-        this->article_name_ = reporter.article_name_;
-        this->publication_file_ = reporter.publication_file_;
+        if (errno != EEXIST)
+            throw std::runtime_error(std::string(strerror(errno)));
     }
 
-    return *this;
+    std::string log_file_path = log_folder_path + "/" + article_name_ + ".log";
+    log_file_.open(log_file_path, std::ofstream::out | std::ofstream::app);
+    if (!log_file_.is_open())
+        throw std::runtime_error(std::string(strerror(errno)));
+}
+
+TintinReporter::~TintinReporter()
+{
+    if (log_file_.is_open())
+        log_file_.close();
 }
 
 void TintinReporter::log(LogLevel log_level, const char *article)
 {
-
+    if (log_level <= log_level_)
+    {
+        log_file_ << "[" << getTimestamp("%d/%m/%Y-%H:%M:%S") << "] [ " << log_level_str[log_level] << " ] - " << article_name_ << ": " << article << std::endl; 
+    }
 }

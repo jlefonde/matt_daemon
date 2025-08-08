@@ -4,7 +4,9 @@ SOURCES_DIR = srcs
 HEADERS_DIR = includes
 OBJECTS_DIR = objs
 
-SOURCES = main.cpp
+SOURCES = main.cpp \
+			TintinReporter.cpp \
+			Daemon.cpp
 
 OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=.o))
 
