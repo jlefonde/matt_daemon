@@ -9,11 +9,7 @@ Daemon::Daemon() : logger_(nullptr),
     lock_fd_(-1),
     has_lock_(false) {}
 
-Daemon::~Daemon()
-{
-    if (logger_)
-        logger_->log(INFO, "Quitting.");
-}
+Daemon::~Daemon() {}
 
 void Daemon::signal_handler(int sig)
 {
@@ -121,6 +117,7 @@ void Daemon::start(int port)
 
             server_ = std::make_unique<Server>(port, *logger_);
             server_->run();
+
             cleanup();
         }
         else
@@ -132,6 +129,8 @@ void Daemon::start(int port)
 
 void Daemon::cleanup()
 {
+    logger_->log(INFO, "Quitting.");
+
     if (lock_fd_ != -1 && has_lock_)
     {
         flock(lock_fd_, LOCK_UN);
@@ -149,7 +148,10 @@ void Daemon::log(LogLevel log_level, const char *msg)
 void Daemon::showError(const char *msg)
 {
     if (logger_)
+    {
         logger_->log(ERROR, msg);
+        logger_->log(INFO, "Quitting.");
+    }
     else
         std::cerr << "Error: " << msg << std::endl; 
 }

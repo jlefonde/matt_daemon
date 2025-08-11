@@ -5,7 +5,7 @@ int main(void)
     Daemon daemon;
     try {
         daemon.initialize();
-        daemon.start(4241);
+        daemon.start(4242);
     }
     catch (const std::exception& e) {
         daemon.showError(e.what());
