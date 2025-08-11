@@ -22,7 +22,7 @@ void Daemon::signal_handler(int sig)
     {
         std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
         instance_->log(INFO, signal_info.c_str());
-        instance_->shutdown();
+        instance_->server_->stop();
     }
 }
 
@@ -138,13 +138,6 @@ void Daemon::cleanup()
         remove(lock_file_path_.c_str());
         remove(pid_file_path_.c_str());
     }
-}
-
-void Daemon::shutdown()
-{
-    logger_->log(INFO, "Quitting.");
-    cleanup();
-    exit(EXIT_SUCCESS);
 }
 
 void Daemon::log(LogLevel log_level, const char *msg)
