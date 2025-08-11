@@ -1,7 +1,7 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), socket_fd_(-1), epoll_fd_(-1), is_running_(true), events_(3), logger_(logger) {}
+Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), socket_fd_(-1), epoll_fd_(-1), client_count_(0), is_running_(true), events_(3), logger_(logger) {}
 
 Server::~Server(){}
 
@@ -110,12 +110,21 @@ void Server::run()
                     logger_.log(ERROR, strerror(errno));
                     exit(EXIT_FAILURE);
                 }
+
+                if (client_count_ == MAX_CLIENTS)
+                {
+                    logger_.log(WARNING, "Too much clients");
+                    close(client_fd);
+                    continue;
+                }
                 
                 if (!addToEpoll(client_fd, EPOLLIN))
                 {
                     logger_.log(ERROR, "Failed to add client socket to epoll.");
                     exit(EXIT_FAILURE);
                 }
+                
+                client_count_++;
                 std::string client_info = "Client " + std::to_string(client_fd) + " connected.";
                 logger_.log(INFO, client_info.c_str());
             }
@@ -124,13 +133,25 @@ void Server::run()
                 size_t bytes_read = read(fd, buffer, 3072);
                 if (bytes_read <= 0)
                 {
+                    if (bytes_read == 0)
+                    {
+                        std::string client_info = "Client " + std::to_string(fd) + " disconnected.";
+                        logger_.log(INFO, client_info.c_str());
+                    }
+                    else
+                    {
+                        std::string client_info = "Couldn't read client " + std::to_string(fd);
+                        logger_.log(WARNING, client_info.c_str());
+                    }
+                    
                     if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, &event_) == -1)
                     {
                         logger_.log(ERROR, strerror(errno));
+                        close(fd);
                         exit(EXIT_FAILURE);
                     }
-                    std::string client_info = "Client " + std::to_string(fd) + " disconnected.";
-                    logger_.log(INFO, client_info.c_str());
+                    close(fd);
+                    client_count_--;
                 }
                 else
                 {
