@@ -136,6 +136,7 @@ void Daemon::cleanup()
         flock(lock_fd_, LOCK_UN);
         close(lock_fd_);
         remove(lock_file_path_.c_str());
+        remove(pid_file_path_.c_str());
     }
 }
 

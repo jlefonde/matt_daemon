@@ -117,7 +117,7 @@ void Server::handleClientDisconnect(int fd, ssize_t bytes_read)
     }
     else
     {
-        std::string client_info = "Couldn't read client " + std::to_string(fd);
+        std::string client_info = "Couldn't read client " + std::to_string(fd) + ", closing connection.";
         logger_.log(WARNING, client_info.c_str());
     }
     
