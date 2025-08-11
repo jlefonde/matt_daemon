@@ -1,7 +1,14 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, TintinReporter& logger) : port_(port), socket_fd_(-1), epoll_fd_(-1), client_count_(0), is_running_(true), events_(MAX_CLIENTS), logger_(logger) {}
+Server::Server(int port, TintinReporter& logger) : 
+    port_(port), 
+    socket_fd_(-1), 
+    epoll_fd_(-1), 
+    client_count_(0), 
+    is_running_(true), 
+    events_(MAX_CLIENTS), 
+    logger_(logger) {}
 
 Server::~Server()
 {
@@ -17,14 +24,14 @@ Server::~Server()
 
 bool Server::addToEpoll(int fd, uint32_t events)
 {
-	event_.events = events;
-	event_.data.fd = fd;
+    event_.events = events;
+    event_.data.fd = fd;
 
-	if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK))
-		return false;
+    if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK))
+        return false;
 
-	if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event_) == -1)
-		return false;
+    if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event_) == -1)
+        return false;
 
     return true;
 }
@@ -33,21 +40,21 @@ void Server::createListeningSocket()
 {
     struct sockaddr_in serv_addr;
 
-	socket_fd_ = socket(AF_INET, SOCK_STREAM, 0);
-	if (socket_fd_ == -1)
+    socket_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd_ == -1)
         throw std::runtime_error(std::string("epoll_create failed: ") + strerror(errno));
 
-	int opt = 1;
-	if (setsockopt(socket_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
+    int opt = 1;
+    if (setsockopt(socket_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
         throw std::runtime_error(std::string("setsockopt failed: ") + strerror(errno));
 
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(port_);
-	if (bind(socket_fd_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(port_);
+    if (bind(socket_fd_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
         throw std::runtime_error(std::string("bind failed: ") + strerror(errno));
 
-	if (listen(socket_fd_, SOMAXCONN) == -1)
+    if (listen(socket_fd_, SOMAXCONN) == -1)
         throw std::runtime_error(std::string("listen failed: ") + strerror(errno));
 
     if (!addToEpoll(socket_fd_, EPOLLIN))
@@ -58,8 +65,8 @@ void Server::createServer()
 {
     logger_.log(INFO, "Creating server.");
 
-	epoll_fd_ = epoll_create(1);
-	if (epoll_fd_ == -1)
+    epoll_fd_ = epoll_create(1);
+    if (epoll_fd_ == -1)
         throw std::runtime_error(std::string("epoll_create failed: ") + strerror(errno));
 
     createListeningSocket();
@@ -177,9 +184,9 @@ void Server::run()
             continue;
         }
 
-		for (int i = 0; i < nfds; i++)
-		{
-			int fd = events_[i].data.fd;
+        for (int i = 0; i < nfds; i++)
+        {
+            int fd = events_[i].data.fd;
             if (fd == socket_fd_)
             {
                 if (!handleClientConnect())

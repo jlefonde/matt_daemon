@@ -17,7 +17,7 @@ class Daemon {
     public:
         Daemon();
         ~Daemon();
-        static void signal_handler(int sig);
+        static void handleSignal(int sig);
         void initialize();
         void start(int port);
         void cleanup();
@@ -33,10 +33,9 @@ class Daemon {
         static Daemon *instance_;
         std::unique_ptr<TintinReporter> logger_;
         std::unique_ptr<Server> server_;
-        std::string lock_file_path_;
-        std::string pid_file_path_;
+        std::string lock_file_;
+        std::string pid_file_;
         int lock_fd_;
-        bool has_lock_;
     };
 
 #endif

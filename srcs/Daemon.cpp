@@ -2,16 +2,20 @@
 
 Daemon* Daemon::instance_ = nullptr;
 
-Daemon::Daemon() : logger_(nullptr),
+Daemon::Daemon() :
+    logger_(nullptr),
     server_(nullptr),
-    lock_file_path_("/var/lock/matt_daemon.lock"),
-    pid_file_path_("/var/run/matt_daemon.pid"),
-    lock_fd_(-1),
-    has_lock_(false) {}
+    lock_file_("/var/lock/matt_daemon.lock"),
+    pid_file_("/var/run/matt_daemon.pid"),
+    lock_fd_(-1) {}
 
-Daemon::~Daemon() {}
+Daemon::~Daemon()
+{
+    if (lock_fd_ != -1)
+        close(lock_fd_);
+}
 
-void Daemon::signal_handler(int sig)
+void Daemon::handleSignal(int sig)
 {
     if (sig != SIGHUP)
     {
@@ -24,9 +28,10 @@ void Daemon::signal_handler(int sig)
 
 void Daemon::addSignal(int sig)
 {
-    if (signal(sig, &signal_handler) == SIG_ERR)
+    if (signal(sig, &handleSignal) == SIG_ERR)
     {
-        std::string signal_error = "signal " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ") failed: " + strerror(errno);
+        std::string signal_error = "signal " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ") failed: " 
+            + strerror(errno);
         throw std::runtime_error(signal_error);
     }
 }
@@ -50,7 +55,7 @@ void Daemon::addSignals()
 void Daemon::initialize()
 {
     if (geteuid() != 0)
-        throw std::runtime_error("The program must be run with root privileges.");
+        throw std::runtime_error("Root privileges are required to run. Please run with sudo or as root user.");
 
     instance_ = this;
 
@@ -59,7 +64,7 @@ void Daemon::initialize()
 
     addSignals();
 
-    lock_fd_ = open(lock_file_path_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+    lock_fd_ = open(lock_file_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
     if (lock_fd_ == -1)
         throw std::runtime_error(std::string("open lock failed: ") + strerror(errno));
 
@@ -70,8 +75,6 @@ void Daemon::initialize()
 
         throw std::runtime_error(std::string("flock failed: ") + strerror(errno));
     }
-
-    has_lock_ = true;
 }
 
 void Daemon::start(int port)
@@ -89,7 +92,7 @@ void Daemon::start(int port)
             throw std::runtime_error(std::string("fork 2 failed: ") + strerror(errno));
         else if (pid == 0)
         {
-            int pid_fd = open(pid_file_path_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+            int pid_fd = open(pid_file_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
             if (pid_fd == -1)
                 throw std::runtime_error(std::string("open pid failed: ") + strerror(errno));
 
@@ -131,13 +134,8 @@ void Daemon::cleanup()
 {
     logger_->log(INFO, "Quitting.");
 
-    if (lock_fd_ != -1 && has_lock_)
-    {
-        flock(lock_fd_, LOCK_UN);
-        close(lock_fd_);
-        remove(lock_file_path_.c_str());
-        remove(pid_file_path_.c_str());
-    }
+    remove(lock_file_.c_str());
+    remove(pid_file_.c_str());
 }
 
 void Daemon::log(LogLevel log_level, const char *msg)

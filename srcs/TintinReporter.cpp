@@ -45,6 +45,7 @@ void TintinReporter::log(LogLevel log_level, const char *article)
 {
     if (log_level <= log_level_)
     {
-        log_file_ << "[" << getTimestamp("%d/%m/%Y-%H:%M:%S") << "] [ " << log_level_str[log_level] << " ] - " << article_name_ << ": " << article << std::endl; 
+        log_file_ << "[" << getTimestamp("%d/%m/%Y-%H:%M:%S") << "] [ " << log_level_str[log_level] << " ] - " 
+            << article_name_ << ": " << article << std::endl; 
     }
 }
