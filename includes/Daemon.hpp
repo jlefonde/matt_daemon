@@ -20,6 +20,7 @@ class Daemon {
         static void signal_handler(int sig);
         void initialize();
         void start(int port);
+        void cleanup();
         void shutdown();
         void log(LogLevel log_level, const char *msg);
         void showError(const char *msg);
@@ -32,6 +33,7 @@ class Daemon {
         std::unique_ptr<Server> server_;
         std::string lock_file_path_;
         int lock_fd_;
+        bool has_lock_;
 };
 
 #endif

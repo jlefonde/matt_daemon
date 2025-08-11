@@ -11,6 +11,7 @@
 #include "TintinReporter.hpp"
 
 #define MAX_CLIENTS 3
+#define BUFFER_SIZE 3072
 
 class Server 
 {
@@ -27,6 +28,9 @@ private:
     void createServer();
     bool addToEpoll(int fd, uint32_t events);
     void createListeningSocket();
+    bool handleClientConnect();
+    void handleClientDisconnect(int fd, ssize_t bytes_read);
+    void handleClientData(int fd);
     int port_;
     int socket_fd_;
     int epoll_fd_;

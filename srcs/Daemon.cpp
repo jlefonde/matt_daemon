@@ -2,9 +2,13 @@
 
 Daemon* Daemon::instance_ = nullptr;
 
-Daemon::Daemon() : logger_(nullptr), server_(nullptr), lock_file_path_("/var/lock/matt_daemon.lock"), lock_fd_(-1) {}
+Daemon::Daemon() : logger_(nullptr), server_(nullptr), lock_file_path_("/var/lock/matt_daemon.lock"), lock_fd_(-1), has_lock_(false) {}
 
-Daemon::~Daemon() {}
+Daemon::~Daemon()
+{
+    logger_->log(INFO, "Quitting.");
+    cleanup();
+}
 
 void Daemon::signal_handler(int sig)
 {
@@ -36,6 +40,8 @@ void Daemon::initialize()
 
         throw std::runtime_error(std::string("flock failed: ") + strerror(errno));
     }
+
+    has_lock_ = true;
 }
 
 void Daemon::start(int port)
@@ -76,7 +82,6 @@ void Daemon::start(int port)
 
             server_ = std::make_unique<Server>(port, *logger_);
             server_->run();
-            shutdown();
         }
         else
             exit(EXIT_SUCCESS);
@@ -85,21 +90,20 @@ void Daemon::start(int port)
         exit(EXIT_SUCCESS);
 }
 
+void Daemon::cleanup()
+{
+    if (lock_fd_ != -1 && has_lock_)
+    {
+        flock(lock_fd_, LOCK_UN);
+        close(lock_fd_);
+        remove(lock_file_path_.c_str());
+    }
+}
+
 void Daemon::shutdown()
 {
     logger_->log(INFO, "Quitting.");
-
-    server_->stop();
-
-    if (lock_fd_ != -1)
-        close(lock_fd_);
-
-    if (remove(lock_file_path_.c_str()))
-    {
-        logger_->log(ERROR, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
+    cleanup();
     exit(EXIT_SUCCESS);
 }
 
