@@ -13,25 +13,25 @@
 #include "TintinReporter.hpp"
 #include "Server.hpp"
 
-#define LOCK_FILE_PATH "/var/lock/matt_daemon.lock"
-
 class Daemon {
     public:
-        static Daemon &getInstance();
+        Daemon();
+        ~Daemon();
+        static void signal_handler(int sig);
         void initialize();
         void start(int port);
         void shutdown();
         void log(LogLevel log_level, const char *msg);
-
+        void showError(const char *msg);
+        
     private:
-        Daemon() = default;
-        ~Daemon() = default;
-        Daemon(const Daemon &) = delete;
-        Daemon &operator=(const Daemon &) = delete;
+        Daemon(const Daemon &deamon) = delete;
+        Daemon &operator=(const Daemon &deamon) = delete;
+        static Daemon *instance_;
         std::unique_ptr<TintinReporter> logger_;
         std::unique_ptr<Server> server_;
+        std::string lock_file_path_;
         int lock_fd_;
-        pid_t pid_;
 };
 
 #endif

@@ -1,7 +1,7 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, pid_t pid, TintinReporter& logger) : port_(port), pid_(pid), socket_fd_(-1), epoll_fd_(-1), client_count_(0), is_running_(true), events_(3), logger_(logger) {}
+Server::Server(int port, TintinReporter& logger) : port_(port), socket_fd_(-1), epoll_fd_(-1), client_count_(0), is_running_(true), events_(3), logger_(logger) {}
 
 Server::~Server(){}
 
@@ -89,7 +89,7 @@ void Server::run()
     createServer();
 
     logger_.log(INFO, "Entering daemon mode.");
-    std::string pid_info = "Started. PID: " + std::to_string(pid_) + "."; 
+    std::string pid_info = "Started. PID: " + std::to_string(getpid()) + "."; 
     logger_.log(INFO, pid_info.c_str());
 
     sockaddr *addr = NULL;
@@ -117,13 +117,13 @@ void Server::run()
                     close(client_fd);
                     continue;
                 }
-                
+
                 if (!addToEpoll(client_fd, EPOLLIN))
                 {
                     logger_.log(ERROR, "Failed to add client socket to epoll.");
                     exit(EXIT_FAILURE);
                 }
-                
+
                 client_count_++;
                 std::string client_info = "Client " + std::to_string(client_fd) + " connected.";
                 logger_.log(INFO, client_info.c_str());

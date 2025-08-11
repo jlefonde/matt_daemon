@@ -2,7 +2,18 @@
 
 int main(void)
 {
-    Daemon &daemon = Daemon::getInstance();
-    daemon.initialize();
-    daemon.start(4242);
+    Daemon daemon;
+    try {
+        daemon.initialize();
+        daemon.start(4242);
+    }
+    catch (const std::exception& e) {
+        daemon.showError(e.what());
+        return EXIT_FAILURE;
+    }
+    catch (...) {
+        daemon.showError("Unknown exception");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }

@@ -1,52 +1,40 @@
 #include "Daemon.hpp"
 
-Daemon& Daemon::getInstance()
-{
-    static Daemon instance;
-    return instance;
-}
+Daemon* Daemon::instance_ = nullptr;
 
-static void signal_handler(int sig)
-{
-    Daemon& daemon = Daemon::getInstance();
-    daemon.log(INFO, "Signal handler.");
+Daemon::Daemon() : logger_(nullptr), server_(nullptr), lock_file_path_("/var/lock/matt_daemon.lock"), lock_fd_(-1) {}
 
+Daemon::~Daemon() {}
+
+void Daemon::signal_handler(int sig)
+{
     if (sig == SIGTERM)
-        daemon.shutdown();
-}
-
-static void write_pid_to_fd(int fd, pid_t pid)
-{
-    std::string pid_str = std::to_string(pid) + "\n";
-    write(fd, pid_str.c_str(), pid_str.size());
+    {       
+        instance_->log(INFO, "Signal handler - SIGTERM received.");
+        instance_->shutdown();
+    }
 }
 
 void Daemon::initialize()
 {
-    // TODO: possible exception of logger
-    logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
+    instance_ = this;
 
+    logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
     logger_->log(INFO, "Started.");
 
     if (signal(SIGTERM, &signal_handler) == SIG_ERR)
-    {
-        logger_->log(ERROR, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+        throw std::runtime_error(std::string("signal failed: ") + strerror(errno));
 
-    lock_fd_ = open(LOCK_FILE_PATH, O_CREAT | O_RDWR, 0644);
+    lock_fd_ = open(lock_file_path_.c_str(), O_CREAT | O_RDWR, 0644);
     if (lock_fd_ == -1)
-    {
-        logger_->log(ERROR, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+        throw std::runtime_error(std::string("open lock failed: ") + strerror(errno));
 
     if (flock(lock_fd_, LOCK_EX | LOCK_NB) == -1)
     {
-        logger_->log(ERROR, "Error file locked.");
-        logger_->log(INFO, "Quitting.");
-        std::cerr << "Error: " << strerror(errno) << std::endl;
-        exit(EXIT_FAILURE);
+        if (errno == EWOULDBLOCK)
+            std::cerr << "Error: another instance is already running." << std::endl;
+
+        throw std::runtime_error(std::string("flock failed: ") + strerror(errno));
     }
 }
 
@@ -54,34 +42,22 @@ void Daemon::start(int port)
 {
     pid_t pid = fork();
     if (pid < 0)
-    {
-        logger_->log(ERROR, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+        throw std::runtime_error(std::string("fork 1 failed: ") + strerror(errno));
     else if (pid == 0)
     {
         if (setsid() == -1)
-        {
-            logger_->log(ERROR, strerror(errno));
-            exit(EXIT_FAILURE);
-        }
+            throw std::runtime_error(std::string("setsid failed: ") + strerror(errno));
 
         pid = fork();
         if (pid < 0)
-        {
-            logger_->log(ERROR, strerror(errno));
-            exit(EXIT_FAILURE);
-        }
+            throw std::runtime_error(std::string("fork 2 failed: ") + strerror(errno));
         else if (pid == 0)
         {
-            pid_ = getpid();
-            write_pid_to_fd(lock_fd_, pid_);
+            std::string pid_str = std::to_string(getpid()) + "\n";
+            write(lock_fd_, pid_str.c_str(), pid_str.size());
 
             if (chdir("/") == -1)
-            {
-                logger_->log(ERROR, strerror(errno));
-                exit(EXIT_FAILURE);
-            }
+                throw std::runtime_error(std::string("chdir failed: ") + strerror(errno));
 
             umask(0);
 
@@ -90,15 +66,15 @@ void Daemon::start(int port)
             close(STDOUT_FILENO);
 
             if (open("/dev/null", O_RDWR) == -1)
-            {
-                logger_->log(ERROR, strerror(errno));
-                exit(EXIT_FAILURE);
-            }
+                throw std::runtime_error(std::string("open /dev/null failed: ") + strerror(errno));
 
-            dup(0);
-            dup(0);
+            if (dup(0) == -1)
+                throw std::runtime_error(std::string("dup failed: ") + strerror(errno));
 
-            server_ = std::make_unique<Server>(port, pid_, *logger_);
+            if (dup(0) == -1)
+                throw std::runtime_error(std::string("dup failed: ") + strerror(errno));
+
+            server_ = std::make_unique<Server>(port, *logger_);
             server_->run();
             shutdown();
         }
@@ -118,10 +94,10 @@ void Daemon::shutdown()
     if (lock_fd_ != -1)
         close(lock_fd_);
 
-    if (remove(LOCK_FILE_PATH))
+    if (remove(lock_file_path_.c_str()))
     {
         logger_->log(ERROR, strerror(errno));
-        exit(EXIT_FAILURE);          
+        exit(EXIT_FAILURE);
     }
 
     exit(EXIT_SUCCESS);
@@ -130,4 +106,12 @@ void Daemon::shutdown()
 void Daemon::log(LogLevel log_level, const char *msg)
 {
     logger_->log(log_level, msg);
+}
+
+void Daemon::showError(const char *msg)
+{
+    if (logger_)
+        logger_->log(ERROR, msg);
+    else
+        std::cerr << "Error: " << msg << std::endl; 
 }
