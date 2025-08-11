@@ -23,7 +23,9 @@ $(NAME): $(OBJECTS)
 	c++ $(CFLAGS) $(OBJECTS) -o $@
 
 clean:
-	pgrep $(NAME) | xargs -r kill -9
+	pgrep $(NAME) | sudo xargs -r kill -9
+	sudo rm -f /var/lock/matt_daemon.lock
+	sudo rm -f /var/run/matt_daemon.pid
 	$(RM) -r $(OBJECTS_DIR)
 
 fclean: clean

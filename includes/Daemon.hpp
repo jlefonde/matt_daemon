@@ -34,6 +34,7 @@ class Daemon {
         std::unique_ptr<TintinReporter> logger_;
         std::unique_ptr<Server> server_;
         std::string lock_file_path_;
+        std::string pid_file_path_;
         int lock_fd_;
         bool has_lock_;
     };

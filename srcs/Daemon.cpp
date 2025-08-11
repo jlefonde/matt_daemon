@@ -2,11 +2,17 @@
 
 Daemon* Daemon::instance_ = nullptr;
 
-Daemon::Daemon() : logger_(nullptr), server_(nullptr), lock_file_path_("/var/lock/matt_daemon.lock"), lock_fd_(-1), has_lock_(false) {}
+Daemon::Daemon() : logger_(nullptr),
+    server_(nullptr),
+    lock_file_path_("/var/lock/matt_daemon.lock"),
+    pid_file_path_("/var/run/matt_daemon.pid"),
+    lock_fd_(-1),
+    has_lock_(false) {}
 
 Daemon::~Daemon()
 {
-    logger_->log(INFO, "Quitting.");
+    if (logger_)
+        logger_->log(INFO, "Quitting.");
     cleanup();
 }
 
@@ -47,6 +53,9 @@ void Daemon::addSignals()
 
 void Daemon::initialize()
 {
+    if (geteuid() != 0)
+        throw std::runtime_error("The program must be run with root privileges.");
+
     instance_ = this;
 
     logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
@@ -54,7 +63,7 @@ void Daemon::initialize()
 
     addSignals();
 
-    lock_fd_ = open(lock_file_path_.c_str(), O_CREAT | O_RDWR, 0644);
+    lock_fd_ = open(lock_file_path_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
     if (lock_fd_ == -1)
         throw std::runtime_error(std::string("open lock failed: ") + strerror(errno));
 
@@ -84,8 +93,13 @@ void Daemon::start(int port)
             throw std::runtime_error(std::string("fork 2 failed: ") + strerror(errno));
         else if (pid == 0)
         {
+            int pid_fd = open(pid_file_path_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+            if (pid_fd == -1)
+                throw std::runtime_error(std::string("open pid failed: ") + strerror(errno));
+
             std::string pid_str = std::to_string(getpid()) + "\n";
             write(lock_fd_, pid_str.c_str(), pid_str.size());
+            write(pid_fd, pid_str.c_str(), pid_str.size());
 
             if (chdir("/") == -1)
                 throw std::runtime_error(std::string("chdir failed: ") + strerror(errno));
