@@ -13,7 +13,6 @@ Daemon::~Daemon()
 {
     if (logger_)
         logger_->log(INFO, "Quitting.");
-    cleanup();
 }
 
 void Daemon::signal_handler(int sig)
@@ -23,6 +22,7 @@ void Daemon::signal_handler(int sig)
         std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
         instance_->log(INFO, signal_info.c_str());
         instance_->server_->stop();
+        instance_->cleanup();
     }
 }
 
@@ -70,7 +70,7 @@ void Daemon::initialize()
     if (flock(lock_fd_, LOCK_EX | LOCK_NB) == -1)
     {
         if (errno == EWOULDBLOCK)
-            std::cerr << "Error: another instance is already running." << std::endl;
+            std::cerr << "Error: Another instance is already running." << std::endl;
 
         throw std::runtime_error(std::string("flock failed: ") + strerror(errno));
     }
@@ -121,12 +121,13 @@ void Daemon::start(int port)
 
             server_ = std::make_unique<Server>(port, *logger_);
             server_->run();
+            cleanup();
         }
         else
-            exit(EXIT_SUCCESS);
+            return;
     }
     else
-        exit(EXIT_SUCCESS);
+        return;
 }
 
 void Daemon::cleanup()
