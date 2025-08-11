@@ -25,15 +25,17 @@ class Daemon {
         void log(LogLevel log_level, const char *msg);
         void showError(const char *msg);
         
-    private:
+        private:
         Daemon(const Daemon &deamon) = delete;
         Daemon &operator=(const Daemon &deamon) = delete;
+        void addSignal(int sig);
+        void addSignals();
         static Daemon *instance_;
         std::unique_ptr<TintinReporter> logger_;
         std::unique_ptr<Server> server_;
         std::string lock_file_path_;
         int lock_fd_;
         bool has_lock_;
-};
+    };
 
 #endif

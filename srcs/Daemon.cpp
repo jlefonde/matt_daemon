@@ -12,11 +12,37 @@ Daemon::~Daemon()
 
 void Daemon::signal_handler(int sig)
 {
-    if (sig == SIGTERM)
-    {       
-        instance_->log(INFO, "Signal handler - SIGTERM received.");
+    if (sig != SIGHUP)
+    {
+        std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
+        instance_->log(INFO, signal_info.c_str());
         instance_->shutdown();
     }
+}
+
+void Daemon::addSignal(int sig)
+{
+    if (signal(sig, &signal_handler) == SIG_ERR)
+    {
+        std::string signal_error = "signal " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ") failed: " + strerror(errno);
+        throw std::runtime_error(signal_error);
+    }
+}
+
+void Daemon::addSignals()
+{
+    addSignal(SIGHUP);
+    addSignal(SIGINT);
+    addSignal(SIGQUIT);
+    addSignal(SIGILL);
+    addSignal(SIGTRAP);
+    addSignal(SIGABRT);
+    addSignal(SIGUSR1);
+    addSignal(SIGSEGV);
+    addSignal(SIGUSR2);
+    addSignal(SIGPIPE);
+    addSignal(SIGALRM);
+    addSignal(SIGTERM);
 }
 
 void Daemon::initialize()
@@ -26,8 +52,7 @@ void Daemon::initialize()
     logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
     logger_->log(INFO, "Started.");
 
-    if (signal(SIGTERM, &signal_handler) == SIG_ERR)
-        throw std::runtime_error(std::string("signal failed: ") + strerror(errno));
+    addSignals();
 
     lock_fd_ = open(lock_file_path_.c_str(), O_CREAT | O_RDWR, 0644);
     if (lock_fd_ == -1)

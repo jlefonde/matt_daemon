@@ -38,6 +38,7 @@ private:
     bool is_running_;
     struct epoll_event event_;
     std::vector<struct epoll_event> events_;
+    std::vector<int> client_fds_;
     TintinReporter& logger_;
 };
 

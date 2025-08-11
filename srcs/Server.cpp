@@ -1,9 +1,19 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, TintinReporter& logger) : port_(port), socket_fd_(-1), epoll_fd_(-1), client_count_(0), is_running_(true), events_(3), logger_(logger) {}
+Server::Server(int port, TintinReporter& logger) : port_(port), socket_fd_(-1), epoll_fd_(-1), client_count_(0), is_running_(true), events_(MAX_CLIENTS), logger_(logger) {}
 
-Server::~Server(){}
+Server::~Server()
+{
+    for (auto & fd : client_fds_)
+        close(fd);
+
+    if (socket_fd_ != -1)
+        close(socket_fd_);
+
+    if (epoll_fd_ != -1)
+        close(epoll_fd_);
+}
 
 bool Server::addToEpoll(int fd, uint32_t events)
 {
@@ -91,6 +101,7 @@ bool Server::handleClientConnect()
 
     client_count_++;
 
+    client_fds_.push_back(client_fd);
     std::string client_info = "Client " + std::to_string(client_fd) + " connected.";
     logger_.log(INFO, client_info.c_str());
 
