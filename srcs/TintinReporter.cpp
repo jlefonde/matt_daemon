@@ -32,27 +32,27 @@ static void createParentDirectories(const std::string& path)
         {
             std::string sub_path = dir_path.substr(0, i);
             if (mkdir(sub_path.c_str(), 0755) == -1 && errno != EEXIST)
-                throw std::runtime_error(std::string("mkdir log folder failed: ") + strerror(errno));
+                return;
         }
     }
 
     if (mkdir(dir_path.c_str(), 0755) == -1 && errno != EEXIST)
-        throw std::runtime_error(std::string("mkdir log folder failed: ") + strerror(errno));
+        return;
 }
 
 void TintinReporter::openLogFile()
 {
     if (log_file_.empty() || log_file_.back() == '/')
-        throw std::runtime_error("Invalid log file path, cannot be empty or a directory: " + log_file_);
+        return;
 
     createParentDirectories(log_file_);
 
     log_file_ofs_.open(log_file_, std::ofstream::out | std::ofstream::app);
     if (!log_file_ofs_.is_open())
-        throw std::runtime_error(std::string("open failed: ") + strerror(errno));
+        return;
 
     if (stat(log_file_.c_str(), &stats_))
-        throw std::runtime_error(std::string("stat failed: ") + strerror(errno));
+        return;
 }
 
 TintinReporter::TintinReporter(LogLevel log_level, const std::string& name, const std::string& log_file, 
@@ -94,20 +94,17 @@ void TintinReporter::rotateLogs(size_t log_msg_size)
             {
                 std::string old_file = log_file_ + "." + std::to_string(i);
                 std::string new_filename = log_file_ + "." + std::to_string(i + 1);
-                if (rename(old_file.c_str(), new_filename.c_str()))
-                    throw;
+                rename(old_file.c_str(), new_filename.c_str());
             }
             std::string new_filename = log_file_ + ".1";
-            if (rename(log_file_.c_str(), new_filename.c_str()))
-                throw;
+            rename(log_file_.c_str(), new_filename.c_str());
 
             cur_rotate_count_ = 0;
         }
         else
         {
             std::string new_filename = log_file_ + "." + std::to_string(cur_rotate_count_);
-            if (rename(log_file_.c_str(), new_filename.c_str()))
-                throw;
+            rename(log_file_.c_str(), new_filename.c_str());
         }
 
         openLogFile();
@@ -126,5 +123,6 @@ void TintinReporter::log(LogLevel log_level, const char *msg)
     if (auto_rotate_)
         rotateLogs(log_msg.size() + 1);
 
-    log_file_ofs_ << log_msg << std::endl; 
+    if (log_file_ofs_.is_open())
+        log_file_ofs_ << log_msg << std::endl; 
 }
