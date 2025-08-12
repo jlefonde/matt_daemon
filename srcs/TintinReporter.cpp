@@ -19,33 +19,112 @@ static std::string getTimestamp(const char *format)
     return std::string(timestamp);
 }
 
-TintinReporter::TintinReporter(const std::string& article_name, const LogLevel log_level)
-    : article_name_(article_name), log_level_(log_level)
+static void createParentDirectories(const std::string& path)
 {
-    std::string log_folder_path = "/var/log/" + article_name_;
-    if (mkdir(log_folder_path.c_str(), 0755) == -1)
+    size_t last_slash = path.find_last_of('/');
+    if (last_slash == std::string::npos)
+        return;
+
+    std::string dir_path = path.substr(0, last_slash);
+    for (size_t i = 1; i < dir_path.length(); i++)
     {
-        if (errno != EEXIST)
-            throw std::runtime_error(std::string(strerror(errno)));
+        if (dir_path[i] == '/')
+        {
+            std::string sub_path = dir_path.substr(0, i);
+            if (mkdir(sub_path.c_str(), 0755) == -1 && errno != EEXIST)
+                throw std::runtime_error(std::string("mkdir log folder failed: ") + strerror(errno));
+        }
     }
 
-    std::string log_file_path = log_folder_path + "/" + article_name_ + ".log";
-    log_file_.open(log_file_path, std::ofstream::out | std::ofstream::app);
-    if (!log_file_.is_open())
-        throw std::runtime_error(std::string(strerror(errno)));
+    if (mkdir(dir_path.c_str(), 0755) == -1 && errno != EEXIST)
+        throw std::runtime_error(std::string("mkdir log folder failed: ") + strerror(errno));
+}
+
+void TintinReporter::openLogFile()
+{
+    if (log_file_.empty() || log_file_.back() == '/')
+        throw std::runtime_error("Invalid log file path, cannot be empty or a directory: " + log_file_);
+
+    createParentDirectories(log_file_);
+
+    log_file_ofs_.open(log_file_, std::ofstream::out | std::ofstream::app);
+    if (!log_file_ofs_.is_open())
+        throw std::runtime_error(std::string("open failed: ") + strerror(errno));
+
+    if (stat(log_file_.c_str(), &stats_))
+        throw std::runtime_error(std::string("stat failed: ") + strerror(errno));
+}
+
+TintinReporter::TintinReporter(LogLevel log_level, const std::string& name, const std::string& log_file, 
+    bool auto_rotate, size_t rotate_interval, size_t rotate_size, size_t rotate_count) :
+    log_level_(log_level),
+    name_(name),
+    log_file_(log_file),
+    auto_rotate_(auto_rotate),
+    rotate_interval_(rotate_interval),
+    rotate_size_(rotate_size),
+    rotate_count_(rotate_count),
+    cur_rotate_count_(0)
+{
+    openLogFile();
 }
 
 TintinReporter::~TintinReporter()
 {
-    if (log_file_.is_open())
-        log_file_.close();
+    if (log_file_ofs_.is_open())
+        log_file_ofs_.close();
 }
 
-void TintinReporter::log(LogLevel log_level, const char *article)
+void TintinReporter::rotateLogs(size_t log_msg_size)
 {
-    if (log_level <= log_level_)
+    time_t next_rotate = stats_.st_ctime + (rotate_interval_ * 3600);
+
+    if (((stats_.st_size + log_msg_size) > (rotate_size_ * 1024 * 1024)) || (time(NULL) >= next_rotate))
     {
-        log_file_ << "[" << getTimestamp("%d/%m/%Y-%H:%M:%S") << "] [ " << log_level_str[log_level] << " ] - " 
-            << article_name_ << ": " << article << std::endl; 
+        log_file_ofs_.close();
+
+        cur_rotate_count_++;
+
+        if (cur_rotate_count_ == rotate_count_)
+        {
+            std::string last_file = log_file_ + "." + std::to_string(cur_rotate_count_);
+            remove(last_file.c_str());
+
+            for (int i = rotate_count_ - 1; i > 0; i--)
+            {
+                std::string old_file = log_file_ + "." + std::to_string(i);
+                std::string new_filename = log_file_ + "." + std::to_string(i + 1);
+                if (rename(old_file.c_str(), new_filename.c_str()))
+                    throw;
+            }
+            std::string new_filename = log_file_ + ".1";
+            if (rename(log_file_.c_str(), new_filename.c_str()))
+                throw;
+
+            cur_rotate_count_ = 0;
+        }
+        else
+        {
+            std::string new_filename = log_file_ + "." + std::to_string(cur_rotate_count_);
+            if (rename(log_file_.c_str(), new_filename.c_str()))
+                throw;
+        }
+
+        openLogFile();
+        stat(log_file_.c_str(), &stats_);
     }
+}
+
+void TintinReporter::log(LogLevel log_level, const char *msg)
+{
+    if (log_level > log_level_)
+        return;
+
+    std::string log_msg = "[" + getTimestamp("%d/%m/%Y-%H:%M:%S") + "] [ " + log_level_str[log_level] + " ] - " 
+            + name_ + ": " + msg;
+
+    if (auto_rotate_)
+        rotateLogs(log_msg.size() + 1);
+
+    log_file_ofs_ << log_msg << std::endl; 
 }

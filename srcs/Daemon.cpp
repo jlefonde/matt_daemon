@@ -59,7 +59,7 @@ void Daemon::initialize()
 
     instance_ = this;
 
-    logger_ = std::make_unique<TintinReporter>("matt_daemon", ERROR);
+    logger_ = std::make_unique<TintinReporter>(ERROR, "matt_daemon", "/var/log/matt_daemon/matt_daemon.log");
     logger_->log(INFO, "Started.");
 
     addSignals();
