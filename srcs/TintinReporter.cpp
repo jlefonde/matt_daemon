@@ -124,5 +124,7 @@ void TintinReporter::log(LogLevel log_level, const char *msg)
         rotateLogs(log_msg.size() + 1);
 
     if (log_file_ofs_.is_open())
-        log_file_ofs_ << log_msg << std::endl; 
+        log_file_ofs_ << log_msg << std::endl;
+
+    stat(log_file_.c_str(), &stats_);
 }
