@@ -6,14 +6,15 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include <string.h>
+#include <string>
 #include <sys/file.h>
 #include <sys/stat.h>
 
 #include "TintinReporter.hpp"
 #include "Server.hpp"
 
-class Daemon {
+class Daemon
+{
 public:
     Daemon();
     ~Daemon();
@@ -25,8 +26,8 @@ public:
     void showError(const char *msg);
     
 private:
-    Daemon(const Daemon &deamon) = delete;
-    Daemon &operator=(const Daemon &deamon) = delete;
+    Daemon(const Daemon &daemon) = delete;
+    Daemon &operator=(const Daemon &daemon) = delete;
     void addSignal(int sig);
     bool parseConfig(const std::string& config_path);
     void start(int port);

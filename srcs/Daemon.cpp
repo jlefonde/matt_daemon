@@ -3,7 +3,7 @@
 Daemon* Daemon::instance_ = nullptr;
 
 Daemon::Daemon() :
-    logger_(nullptr),
+    logger_(std::make_unique<TintinReporter>(ERROR, "matt_daemon", "/var/log/matt_daemon/matt_daemon.log")),
     server_(nullptr),
     lock_file_("/var/lock/matt_daemon.lock"),
     pid_file_("/var/run/matt_daemon.pid"),
@@ -63,7 +63,6 @@ void Daemon::initialize(const std::string& config_path)
     config_path_ = config_path;
     instance_ = this;
 
-    logger_ = std::make_unique<TintinReporter>(ERROR, "matt_daemon", "/var/log/matt_daemon/matt_daemon.log");
     logger_->log(INFO, "Started.");
 
     lock_fd_ = open(lock_file_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);

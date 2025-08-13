@@ -7,13 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-enum LogLevel
-{
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR
-};
+#include "LoggerConfig.hpp"
 
 class TintinReporter
 {
