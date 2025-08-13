@@ -48,11 +48,8 @@ void TintinReporter::openLogFile()
     createParentDirectories(log_file_);
 
     log_file_ofs_.open(log_file_, std::ofstream::out | std::ofstream::app);
-    if (!log_file_ofs_.is_open())
-        return;
 
-    if (stat(log_file_.c_str(), &stats_))
-        return;
+    stat(log_file_.c_str(), &stats_);
 }
 
 TintinReporter::TintinReporter(LogLevel log_level, const std::string& name, const std::string& log_file, 
@@ -119,6 +116,16 @@ void TintinReporter::log(LogLevel log_level, const char *msg)
 
     std::string log_msg = "[" + getTimestamp("%d/%m/%Y-%H:%M:%S") + "] [ " + log_level_str[log_level] + " ] - " 
             + name_ + ": " + msg;
+
+    struct stat stats;
+    if (stat(log_file_.c_str(), &stats) != 0 || stats.st_ino != stats_.st_ino)
+    {
+        if (log_file_ofs_.is_open())
+            log_file_ofs_.close();
+
+        openLogFile();
+        stat(log_file_.c_str(), &stats_);
+    }
 
     if (auto_rotate_)
         rotateLogs(log_msg.size() + 1);
