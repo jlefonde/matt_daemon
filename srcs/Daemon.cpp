@@ -52,9 +52,9 @@ void Daemon::addSignals()
     addSignal(SIGTERM);
 }
 
-void Daemon::initialize(const Config &config)
+void Daemon::initialize(Config &config)
 {
-    (void)config;
+    config_ = &config.getDaemonConfig();
     instance_ = this;
 
     logger_->log(INFO, "Started.");

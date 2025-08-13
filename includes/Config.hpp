@@ -23,9 +23,9 @@ public:
     void setDaemonConfig(DaemonConfig &daemon_config);
     void setServerConfig(ServerConfig &server_config);
     void setLoggerConfig(LoggerConfig &logger_config);
-    bool parse();
-
+    
 private:
+    bool parse();
     std::string config_path_;
     DaemonConfig daemon_config_;
     ServerConfig server_config_;

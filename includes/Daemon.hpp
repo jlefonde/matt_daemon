@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 
 #include "Config.hpp"
+#include "DaemonConfig.hpp"
 #include "TintinReporter.hpp"
 #include "Server.hpp"
 
@@ -20,7 +21,7 @@ public:
     Daemon();
     ~Daemon();
     static void handleSignal(int sig);
-    void initialize(const Config &config);
+    void initialize(Config &config);
     void cleanup();
     void shutdown();
     void log(LogLevel log_level, const char *msg);
@@ -33,6 +34,7 @@ private:
     void start(int port);
     void addSignals();
     static Daemon *instance_;
+    DaemonConfig *config_;
     std::unique_ptr<TintinReporter> logger_;
     std::unique_ptr<Server> server_;
     std::string lock_file_;
