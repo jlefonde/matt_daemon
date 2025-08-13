@@ -52,17 +52,19 @@ void Daemon::addSignals()
     addSignal(SIGTERM);
 }
 
-void Daemon::initialize()
+bool Daemon::parseConfig(const std::string& config_path)
 {
-    if (geteuid() != 0)
-        throw std::runtime_error("Root privileges are required to run. Please run with sudo or as root user.");
+    (void)config_path;
+    return true;
+}
 
+void Daemon::initialize(const std::string& config_path)
+{
+    config_path_ = config_path;
     instance_ = this;
 
     logger_ = std::make_unique<TintinReporter>(ERROR, "matt_daemon", "/var/log/matt_daemon/matt_daemon.log");
     logger_->log(INFO, "Started.");
-
-    addSignals();
 
     lock_fd_ = open(lock_file_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
     if (lock_fd_ == -1)
@@ -75,6 +77,13 @@ void Daemon::initialize()
 
         throw std::runtime_error(std::string("flock failed: ") + strerror(errno));
     }
+
+    addSignals();
+
+    if (!config_path.empty())
+        parseConfig(config_path);
+
+    start(4242);
 }
 
 void Daemon::start(int port)
