@@ -5,8 +5,13 @@ HEADERS_DIR = includes
 OBJECTS_DIR = objs
 
 SOURCES = main.cpp \
-			TintinReporter.cpp \
+			utils.cpp \
+			Config.cpp \
+			DaemonConfig.cpp \
+			ServerConfig.cpp \
+			LoggerConfig.cpp \
 			Daemon.cpp \
+			TintinReporter.cpp \
 			Server.cpp
 
 OBJECTS = $(addprefix $(OBJECTS_DIR)/, $(SOURCES:.cpp=.o))

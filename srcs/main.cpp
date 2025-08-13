@@ -1,4 +1,5 @@
 #include "Daemon.hpp"
+#include "Config.hpp"
 
 static void showHelper()
 {
@@ -84,7 +85,16 @@ int main(int argc, char **argv)
 
     Daemon daemon;
     try {
-        daemon.initialize(config_path);
+        if (config_path.empty())
+        {
+            Config config;
+            daemon.initialize(config);
+        }
+        else
+        {
+            Config config(config_path);
+            daemon.initialize(config);
+        }
     }
     catch (const std::exception& e) {
         daemon.showError(e.what());

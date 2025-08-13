@@ -37,7 +37,7 @@ public:
     const char *getLogLevelStr(LogLevel log_level);
     
 private:
-    static const char **log_level_str_;
+    static const char *log_level_str_[];
     std::string log_file_;
     LogLevel log_level_;
     bool auto_rotate_;

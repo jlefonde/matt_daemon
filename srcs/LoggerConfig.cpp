@@ -1,6 +1,6 @@
 #include "LoggerConfig.hpp"
 
-const char *log_level_str_[] = {
+const char *LoggerConfig::log_level_str_[] = {
     [DEBUG] = "DEBUG",
     [INFO] = "INFO",
     [WARNING] = "WARNING",

@@ -52,15 +52,9 @@ void Daemon::addSignals()
     addSignal(SIGTERM);
 }
 
-bool Daemon::parseConfig(const std::string& config_path)
+void Daemon::initialize(const Config &config)
 {
-    (void)config_path;
-    return true;
-}
-
-void Daemon::initialize(const std::string& config_path)
-{
-    config_path_ = config_path;
+    (void)config;
     instance_ = this;
 
     logger_->log(INFO, "Started.");
@@ -78,9 +72,6 @@ void Daemon::initialize(const std::string& config_path)
     }
 
     addSignals();
-
-    if (!config_path.empty())
-        parseConfig(config_path);
 
     start(4242);
 }
