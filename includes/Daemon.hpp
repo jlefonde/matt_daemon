@@ -21,7 +21,7 @@ public:
     Daemon();
     ~Daemon();
     static void handleSignal(int sig);
-    void initialize(Config &config);
+    void initialize(int argc, char **argv);
     void updateConfig();
     void cleanup();
     void shutdown();
@@ -31,11 +31,13 @@ public:
 private:
     Daemon(const Daemon &daemon) = delete;
     Daemon &operator=(const Daemon &daemon) = delete;
+    bool parseArgs(int argc, char **argv);
     void addSignal(int sig);
-    void start();
     void addSignals();
+    void start();
     static Daemon *instance_;
     DaemonConfig *config_;
+    std::string config_path_;
     std::unique_ptr<TintinReporter> logger_;
     std::unique_ptr<Server> server_;
     int lock_fd_;

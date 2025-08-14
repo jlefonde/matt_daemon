@@ -13,6 +13,18 @@ Daemon::~Daemon()
         close(lock_fd_);
 }
 
+static void showHelper()
+{
+    std::cout << "Usage: MattDaemon [OPTIONS]\n"
+              << "\n"
+              << "A daemon with a server that listen on a specific port and register incoming data in a log file.\n"
+              << "\n"
+              << "OPTIONS:\n"
+              << "  -c <config_file>    Specify configuration file path\n"
+              << "  -h                  Show this help message and exit\n"
+              << std::endl;
+}
+
 void Daemon::handleSignal(int sig)
 {
     if (sig == SIGHUP)
@@ -57,11 +69,82 @@ void Daemon::addSignals()
     addSignal(SIGTERM);
 }
 
-void Daemon::initialize(Config &config)
+bool Daemon::parseArgs(int argc, char **argv)
 {
-    config_ = &config.getDaemonConfig();
-    logger_ = std::make_unique<TintinReporter>("matt_daemon", config.getLoggerConfig());
-    server_ = std::make_unique<Server>(config.getServerConfig(), *logger_); 
+    if (geteuid() != 0)
+    {
+        std::cerr << "Error: Root privileges are required to run. Please run with sudo or as root user." << std::endl;
+        return false;
+    }
+
+    bool config_mode = false;
+
+    for (int i = 1; i < argc; i++)
+    {
+        if (argv[i][0] == '-')
+        {
+            if (strcmp(argv[i], "-c") == 0)
+                config_mode = true;
+            else if (strcmp(argv[i], "-h") == 0)
+            {
+                showHelper();
+                return false;
+            }
+            else
+            {
+                std::cerr << "Error: Unknown option '" << argv[i] << "'. Use -h for help." << std::endl;
+                return false;
+            }
+        }
+        else if (config_mode)
+        {
+            config_path_ = argv[i];
+            config_mode = false;
+        }
+        else
+        {
+            std::cerr << "Error: Unexpected argument '" << argv[i] << "'. Use -h for help." << std::endl;
+            return false;
+        }
+    }
+
+    if (config_mode)
+    {
+        std::cerr << "Error: Option -c requires a configuration file path. Use -h for help." << std::endl;
+        return false;
+    }
+
+    if (!config_path_.empty())
+    {
+        struct stat stats;
+        if (stat(config_path_.c_str(), &stats) == -1)
+        {
+            std::cerr << "Error: '" << config_path_ << "': " << strerror(errno) << std::endl;
+            return false;
+        }
+
+        if ((stats.st_mode & S_IFMT) != S_IFREG)
+        {
+            std::cerr << "Error: '" << config_path_ << "' must be a regular file." << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Daemon::initialize(int argc, char **argv)
+{
+    if (!parseArgs(argc, argv))
+        throw std::invalid_argument("");
+
+    std::unique_ptr<Config> config = config_path_.empty() 
+        ? std::make_unique<Config>()
+        : std::make_unique<Config>(config_path_);
+
+    config_ = &config->getDaemonConfig();
+    logger_ = std::make_unique<TintinReporter>("matt_daemon", config->getLoggerConfig());
+    server_ = std::make_unique<Server>(config->getServerConfig(), *logger_); 
     instance_ = this;
 
     logger_->log(INFO, "Started.");
@@ -152,9 +235,13 @@ void Daemon::showError(const char *msg)
 {
     if (logger_)
     {
-        logger_->log(ERROR, msg);
+        if (strlen(msg) > 0)
+            logger_->log(ERROR, msg);
         logger_->log(INFO, "Quitting.");
     }
     else
-        std::cerr << "Error: " << msg << std::endl; 
+    {
+        if (strlen(msg) > 0)
+            std::cerr << "Error: " << msg << std::endl; 
+    }
 }
