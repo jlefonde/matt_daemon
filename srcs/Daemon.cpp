@@ -15,13 +15,20 @@ Daemon::~Daemon()
 
 void Daemon::handleSignal(int sig)
 {
-    if (sig != SIGHUP)
+    if (sig == SIGHUP)
+        instance_->updateConfig();
+    else
     {
         std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
         instance_->log(INFO, signal_info.c_str());
         instance_->server_->stop();
         instance_->cleanup();
     }
+}
+
+void Daemon::updateConfig()
+{
+
 }
 
 void Daemon::addSignal(int sig)

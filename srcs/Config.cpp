@@ -2,7 +2,10 @@
 
 Config::Config() {}
 
-Config::Config(const std::string &config_path) : config_path_(config_path) {}
+Config::Config(const std::string &config_path) : config_path_(config_path)
+{
+    
+}
 
 Config::Config(const Config &config)
 {

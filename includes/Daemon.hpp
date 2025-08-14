@@ -22,6 +22,7 @@ public:
     ~Daemon();
     static void handleSignal(int sig);
     void initialize(Config &config);
+    void updateConfig();
     void cleanup();
     void shutdown();
     void log(LogLevel log_level, const char *msg);

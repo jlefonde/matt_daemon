@@ -11,7 +11,7 @@
 #include "TintinReporter.hpp"
 #include "ServerConfig.hpp"
 
-#define BUFFER_SIZE 3072
+#define BUFFER_SIZE 1024
 
 class Server 
 {
