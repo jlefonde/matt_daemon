@@ -33,6 +33,7 @@ public:
     void setRotateInterval(size_t rotate_interval);
     void setRotateSize(size_t rotate_size);
     void setRotateCount(size_t rotate_count);
+    void setAutoRotateFromStr(const std::string &auto_rotate_str);
     void setLogLevelFromStr(const std::string &log_level_str);
     const char *getLogLevelStr(LogLevel log_level);
     

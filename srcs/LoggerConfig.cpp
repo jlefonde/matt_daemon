@@ -114,6 +114,32 @@ void LoggerConfig::setRotateCount(size_t rotate_count)
     rotate_count_ = rotate_count;
 }
 
+void LoggerConfig::setAutoRotateFromStr(const std::string &auto_rotate_str)
+{
+    const std::string valid_true[] = { "true", "yes", "1" };
+    const std::string valid_false[] = { "false", "no", "0" };
+
+    for (const auto& valid_str : valid_true)
+    {
+        if (auto_rotate_str == valid_str)
+        {
+            auto_rotate_ = true;
+            return;
+        }
+    }
+
+    for (const auto& valid_str : valid_false)
+    {
+        if (auto_rotate_str == valid_str)
+        {
+            auto_rotate_ = false;
+            return;
+        }
+    }
+
+    throw std::invalid_argument("Invalid auto rotate provided: " + auto_rotate_str);
+}
+
 void LoggerConfig::setLogLevelFromStr(const std::string &log_level_str)
 {
     for (size_t i = 0; i < sizeof(log_level_str_)/sizeof(log_level_str_[0]); i++)

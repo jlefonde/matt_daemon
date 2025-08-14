@@ -3,10 +3,18 @@
 
 #include <string>
 #include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_map>
+#include <functional>
+#include <string.h>
 
+#include "utils.hpp"
 #include "DaemonConfig.hpp"
 #include "ServerConfig.hpp"
 #include "LoggerConfig.hpp"
+
+#define CONFIG_BUFFER_SIZE 3072
 
 class Config
 {
@@ -26,6 +34,8 @@ public:
     void setLoggerConfig(LoggerConfig &logger_config);
     
 private:
+    std::unordered_map<std::string, std::unordered_map<std::string, std::function<void(const std::string &value)>>> config_schema_;
+    void initializeSchema();
     bool parse();
     std::string config_path_;
     DaemonConfig daemon_config_;
