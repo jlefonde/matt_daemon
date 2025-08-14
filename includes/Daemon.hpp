@@ -21,13 +21,13 @@ public:
     Daemon();
     ~Daemon();
     static void handleSignal(int sig);
-    void initialize(int argc, char **argv);
+    bool initialize(int argc, char **argv);
     void updateConfig();
     void cleanup();
     void shutdown();
     void log(LogLevel log_level, const char *msg);
     void showError(const char *msg);
-    
+
 private:
     Daemon(const Daemon &daemon) = delete;
     Daemon &operator=(const Daemon &daemon) = delete;

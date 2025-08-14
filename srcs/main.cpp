@@ -5,7 +5,8 @@ int main(int argc, char **argv)
 {
     Daemon daemon;
     try {
-        daemon.initialize(argc, argv);
+        if (!daemon.initialize(argc, argv))
+            return 1;
     }
     catch (const std::exception& e) {
         daemon.showError(e.what());

@@ -133,10 +133,10 @@ bool Daemon::parseArgs(int argc, char **argv)
     return true;
 }
 
-void Daemon::initialize(int argc, char **argv)
+bool Daemon::initialize(int argc, char **argv)
 {
     if (!parseArgs(argc, argv))
-        throw std::invalid_argument("");
+        return false;
 
     std::unique_ptr<Config> config = config_path_.empty() 
         ? std::make_unique<Config>()
@@ -164,6 +164,8 @@ void Daemon::initialize(int argc, char **argv)
     addSignals();
 
     start();
+
+    return true;
 }
 
 void Daemon::start()
@@ -235,13 +237,9 @@ void Daemon::showError(const char *msg)
 {
     if (logger_)
     {
-        if (strlen(msg) > 0)
-            logger_->log(ERROR, msg);
+        logger_->log(ERROR, msg);
         logger_->log(INFO, "Quitting.");
     }
     else
-    {
-        if (strlen(msg) > 0)
-            std::cerr << "Error: " << msg << std::endl; 
-    }
+        std::cerr << "Error: " << msg << std::endl; 
 }
