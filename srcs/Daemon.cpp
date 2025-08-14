@@ -98,7 +98,14 @@ bool Daemon::parseArgs(int argc, char **argv)
         }
         else if (config_mode)
         {
-            config_path_ = argv[i];
+            char absolute_path[PATH_MAX]; 
+            if (realpath(argv[i], absolute_path) == nullptr)
+            {
+                std::cerr << "Error: Cannot resolve path '" << argv[i] << "': " << strerror(errno) << std::endl;
+                return false;
+            }
+
+            config_path_ = absolute_path;
             config_mode = false;
         }
         else

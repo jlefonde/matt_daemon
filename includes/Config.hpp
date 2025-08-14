@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 
 #include <string>
+#include <fstream>
 
 #include "DaemonConfig.hpp"
 #include "ServerConfig.hpp"

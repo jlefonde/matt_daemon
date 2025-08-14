@@ -9,6 +9,7 @@
 #include <string>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <linux/limits.h>
 
 #include "Config.hpp"
 #include "DaemonConfig.hpp"

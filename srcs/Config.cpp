@@ -4,7 +4,10 @@ Config::Config() {}
 
 Config::Config(const std::string &config_path) : config_path_(config_path)
 {
-    
+    std::ifstream config_ifs;
+
+    config_ifs.open(config_path_, std::ifstream::in);
+    // if (!config_ifs.is_open())
 }
 
 Config::Config(const Config &config)
