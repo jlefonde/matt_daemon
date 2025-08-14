@@ -1,14 +1,16 @@
 #include "Server.hpp"
 #include <unistd.h>
 
-Server::Server(int port, TintinReporter& logger) : 
-    port_(port), 
+Server::Server(const ServerConfig &config, TintinReporter &logger) : 
+    config_(config),
+    logger_(logger),
     socket_fd_(-1), 
     epoll_fd_(-1), 
     client_count_(0), 
-    is_running_(true), 
-    events_(MAX_CLIENTS), 
-    logger_(logger) {}
+    is_running_(true)
+{
+    events_.resize(config_.getMaxConnections());
+}
 
 Server::~Server()
 {
@@ -50,7 +52,7 @@ void Server::createListeningSocket()
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port_);
+    serv_addr.sin_port = htons(config_.getPort());
     if (bind(socket_fd_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
         throw std::runtime_error(std::string("bind failed: ") + strerror(errno));
 
@@ -73,7 +75,7 @@ void Server::createServer()
 
     logger_.log(INFO, "Server created.");
 
-    std::string port_info = "Listening on port " + std::to_string(port_) + ".";
+    std::string port_info = "Listening on port " + std::to_string(config_.getPort()) + ".";
     logger_.log(INFO, port_info.c_str());
 }
 
@@ -90,7 +92,7 @@ bool Server::handleClientConnect()
         return false;
     }
 
-    if (client_count_ == MAX_CLIENTS)
+    if (client_count_ == config_.getMaxConnections())
     {
         std::string error_info = "Maximum number of clients reached, rejecting new connection.";
         logger_.log(WARNING, error_info.c_str());

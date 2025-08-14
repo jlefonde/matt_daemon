@@ -3,10 +3,8 @@
 Daemon* Daemon::instance_ = nullptr;
 
 Daemon::Daemon() :
-    logger_(std::make_unique<TintinReporter>(ERROR, "matt_daemon", "/var/log/matt_daemon/matt_daemon.log")),
+    logger_(nullptr),
     server_(nullptr),
-    lock_file_("/var/lock/matt_daemon.lock"),
-    pid_file_("/var/run/matt_daemon.pid"),
     lock_fd_(-1) {}
 
 Daemon::~Daemon()
@@ -55,11 +53,13 @@ void Daemon::addSignals()
 void Daemon::initialize(Config &config)
 {
     config_ = &config.getDaemonConfig();
+    logger_ = std::make_unique<TintinReporter>("matt_daemon", config.getLoggerConfig());
+    server_ = std::make_unique<Server>(config.getServerConfig(), *logger_); 
     instance_ = this;
 
     logger_->log(INFO, "Started.");
 
-    lock_fd_ = open(lock_file_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+    lock_fd_ = open(config_->getLockFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
     if (lock_fd_ == -1)
         throw std::runtime_error(std::string("open lock failed: ") + strerror(errno));
 
@@ -73,10 +73,10 @@ void Daemon::initialize(Config &config)
 
     addSignals();
 
-    start(4242);
+    start();
 }
 
-void Daemon::start(int port)
+void Daemon::start()
 {
     pid_t pid = fork();
     if (pid < 0)
@@ -91,7 +91,7 @@ void Daemon::start(int port)
             throw std::runtime_error(std::string("fork 2 failed: ") + strerror(errno));
         else if (pid == 0)
         {
-            int pid_fd = open(pid_file_.c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+            int pid_fd = open(config_->getPidFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
             if (pid_fd == -1)
                 throw std::runtime_error(std::string("open pid failed: ") + strerror(errno));
 
@@ -117,7 +117,6 @@ void Daemon::start(int port)
             if (dup(0) == -1)
                 throw std::runtime_error(std::string("dup failed: ") + strerror(errno));
 
-            server_ = std::make_unique<Server>(port, *logger_);
             server_->run();
 
             cleanup();
@@ -133,8 +132,8 @@ void Daemon::cleanup()
 {
     logger_->log(INFO, "Quitting.");
 
-    remove(lock_file_.c_str());
-    remove(pid_file_.c_str());
+    remove(config_->getLockFile().c_str());
+    remove(config_->getPidFile().c_str());
 }
 
 void Daemon::log(LogLevel log_level, const char *msg)

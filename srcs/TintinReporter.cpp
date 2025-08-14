@@ -42,26 +42,21 @@ static void createParentDirectories(const std::string& path)
 
 void TintinReporter::openLogFile()
 {
-    if (log_file_.empty() || log_file_.back() == '/')
+    std::string log_file = config_.getLogFile();
+    if (log_file.empty() || log_file.back() == '/')
         return;
 
-    createParentDirectories(log_file_);
+    createParentDirectories(log_file);
 
-    log_file_ofs_.open(log_file_, std::ofstream::out | std::ofstream::app);
+    log_file_ofs_.open(log_file, std::ofstream::out | std::ofstream::app);
 
-    stat(log_file_.c_str(), &stats_);
+    stat(log_file.c_str(), &stats_);
 }
 
-TintinReporter::TintinReporter(LogLevel log_level, const std::string& name, const std::string& log_file, 
-    bool auto_rotate, size_t rotate_interval, size_t rotate_size, size_t rotate_count) :
-    log_level_(log_level),
+TintinReporter::TintinReporter(const std::string& name, const LoggerConfig &config) :
+    config_(config),
     name_(name),
-    log_file_(log_file),
-    auto_rotate_(auto_rotate),
-    rotate_interval_(rotate_interval),
-    rotate_size_(rotate_size),
-    rotate_count_(rotate_count),
-    cur_rotate_count_(0)
+    rotate_count_(0)
 {
     openLogFile();
 }
@@ -74,64 +69,67 @@ TintinReporter::~TintinReporter()
 
 void TintinReporter::rotateLogs(size_t log_msg_size)
 {
-    time_t next_rotate = stats_.st_ctime + (rotate_interval_ * 3600);
+    time_t next_rotate = stats_.st_ctime + (config_.getRotateInterval() * 3600);
 
-    if (((stats_.st_size + log_msg_size) > (rotate_size_ * 1024 * 1024)) || (time(NULL) >= next_rotate))
+    if (((stats_.st_size + log_msg_size) > (config_.getRotateSize() * 1024)) || (time(NULL) >= next_rotate))
     {
         log_file_ofs_.close();
-
-        cur_rotate_count_++;
-
-        if (cur_rotate_count_ == rotate_count_)
+        
+        std::string log_file = config_.getLogFile();
+        rotate_count_++;
+        
+        if (rotate_count_ == config_.getRotateCount())
         {
-            std::string last_file = log_file_ + "." + std::to_string(cur_rotate_count_);
+            std::string last_file = log_file + "." + std::to_string(rotate_count_);
             remove(last_file.c_str());
 
-            for (int i = rotate_count_ - 1; i > 0; i--)
+            for (int i = config_.getRotateCount() - 1; i > 0; i--)
             {
-                std::string old_file = log_file_ + "." + std::to_string(i);
-                std::string new_filename = log_file_ + "." + std::to_string(i + 1);
+                std::string old_file = log_file + "." + std::to_string(i);
+                std::string new_filename = log_file + "." + std::to_string(i + 1);
                 rename(old_file.c_str(), new_filename.c_str());
             }
-            std::string new_filename = log_file_ + ".1";
-            rename(log_file_.c_str(), new_filename.c_str());
+            std::string new_filename = log_file + ".1";
+            rename(log_file.c_str(), new_filename.c_str());
 
-            cur_rotate_count_ = 0;
+            rotate_count_ = 0;
         }
         else
         {
-            std::string new_filename = log_file_ + "." + std::to_string(cur_rotate_count_);
-            rename(log_file_.c_str(), new_filename.c_str());
+            std::string new_filename = log_file + "." + std::to_string(rotate_count_);
+            rename(log_file.c_str(), new_filename.c_str());
         }
 
         openLogFile();
-        stat(log_file_.c_str(), &stats_);
+        stat(log_file.c_str(), &stats_);
     }
 }
 
 void TintinReporter::log(LogLevel log_level, const char *msg)
 {
-    if (log_level > log_level_)
+    std::string log_file = config_.getLogFile();
+
+    if (log_level > config_.getLogLevel())
         return;
 
     std::string log_msg = "[" + getTimestamp("%d/%m/%Y-%H:%M:%S") + "] [ " + log_level_str[log_level] + " ] - " 
             + name_ + ": " + msg;
 
     struct stat stats;
-    if (stat(log_file_.c_str(), &stats) != 0 || stats.st_ino != stats_.st_ino)
+    if (stat(log_file.c_str(), &stats) != 0 || stats.st_ino != stats_.st_ino)
     {
         if (log_file_ofs_.is_open())
             log_file_ofs_.close();
 
         openLogFile();
-        stat(log_file_.c_str(), &stats_);
+        stat(log_file.c_str(), &stats_);
     }
 
-    if (auto_rotate_)
+    if (config_.isAutoRotateEnabled())
         rotateLogs(log_msg.size() + 1);
 
     if (log_file_ofs_.is_open())
         log_file_ofs_ << log_msg << std::endl;
 
-    stat(log_file_.c_str(), &stats_);
+    stat(log_file.c_str(), &stats_);
 }

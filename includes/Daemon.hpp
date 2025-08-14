@@ -31,14 +31,12 @@ private:
     Daemon(const Daemon &daemon) = delete;
     Daemon &operator=(const Daemon &daemon) = delete;
     void addSignal(int sig);
-    void start(int port);
+    void start();
     void addSignals();
     static Daemon *instance_;
     DaemonConfig *config_;
     std::unique_ptr<TintinReporter> logger_;
     std::unique_ptr<Server> server_;
-    std::string lock_file_;
-    std::string pid_file_;
     int lock_fd_;
 };
 
