@@ -16,6 +16,7 @@ public:
     ~TintinReporter();
     LoggerConfig getConfig();
     void setConfig(LoggerConfig &config);
+    void resetAutoRotate();
     void log(LogLevel log_level, const char *msg);
     
 private:

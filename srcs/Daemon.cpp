@@ -48,6 +48,10 @@ void Daemon::updateConfig()
 
         config_ = newConfig.getDaemonConfig();
         server_.setConfig(newConfig.getServerConfig());
+
+        if (logger_.getConfig().getLogFile() == newConfig.getLoggerConfig().getLogFile())
+            logger_.resetAutoRotate();
+
         logger_.setConfig(newConfig.getLoggerConfig());
 
         logger_.log(INFO, "Configuration updated.");

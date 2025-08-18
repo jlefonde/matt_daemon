@@ -116,6 +116,11 @@ void TintinReporter::rotateLogs(size_t log_msg_size)
     }
 }
 
+void TintinReporter::resetAutoRotate()
+{
+    rotate_count_ = 0;
+}
+
 void TintinReporter::log(LogLevel log_level, const char *msg)
 {
     std::string log_file = config_.getLogFile();
