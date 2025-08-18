@@ -196,6 +196,7 @@ void Server::run()
                 std::string error_info = std::string("epoll_wait failed: ") + strerror(errno);
                 logger_.log(WARNING, error_info.c_str());
             }
+
             continue;
         }
 

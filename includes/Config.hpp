@@ -38,7 +38,7 @@ public:
 private:
     std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::function<void(const std::string &)>, bool>>> config_schema_;
     void initializeSchema();
-    void parse(bool restart_required);
+    void parse(bool updating_config);
     std::string config_path_;
     DaemonConfig daemon_config_;
     ServerConfig server_config_;

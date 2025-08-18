@@ -41,8 +41,8 @@ void ServerConfig::setPort(size_t port)
 
 void ServerConfig::setMaxConnections(size_t max_connections)
 {
-    if (max_connections == 0)
-        throw std::invalid_argument("Maximum connections must be greater than 0.");
+    if (max_connections < 1 || max_connections > 65535)
+        throw std::invalid_argument("Maximum connections must be between 1 and 65535.");
 
     max_connections_ = max_connections;
 }

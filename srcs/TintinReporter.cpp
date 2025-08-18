@@ -87,29 +87,25 @@ void TintinReporter::rotateLogs(size_t log_msg_size)
         log_file_ofs_.close();
         
         std::string log_file = config_.getLogFile();
-        rotate_count_++;
         
         if (rotate_count_ == config_.getRotateCount())
         {
-            std::string last_file = log_file + "." + std::to_string(rotate_count_);
-            remove(last_file.c_str());
-
-            for (int i = config_.getRotateCount() - 1; i > 0; i--)
-            {
-                std::string old_file = log_file + "." + std::to_string(i);
-                std::string new_filename = log_file + "." + std::to_string(i + 1);
-                rename(old_file.c_str(), new_filename.c_str());
-            }
-            std::string new_filename = log_file + ".1";
-            rename(log_file.c_str(), new_filename.c_str());
-
-            rotate_count_ = 0;
+            std::string oldest_file = log_file + "." + std::to_string(config_.getRotateCount());
+            remove(oldest_file.c_str());
         }
-        else
+
+        size_t max_rotate = std::min(rotate_count_, config_.getRotateCount() - 1);
+        for (size_t i = max_rotate; i > 0; i--)
         {
-            std::string new_filename = log_file + "." + std::to_string(rotate_count_);
-            rename(log_file.c_str(), new_filename.c_str());
+            std::string old_file = log_file + "." + std::to_string(i);
+            std::string new_file = log_file + "." + std::to_string(i + 1);
+            rename(old_file.c_str(), new_file.c_str());
         }
+
+        rename(log_file.c_str(), (log_file + ".1").c_str());
+
+        if (rotate_count_ < config_.getRotateCount())
+            rotate_count_++;
 
         openLogFile();
         stat(log_file.c_str(), &stats_);

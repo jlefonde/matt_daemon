@@ -92,24 +92,24 @@ void LoggerConfig::setAutoRotate(bool auto_rotate)
 
 void LoggerConfig::setRotateInterval(size_t rotate_interval)
 {
-    if (rotate_interval == 0)
-        throw std::invalid_argument("Rotate interval must be greater than 0.");
+    if (rotate_interval < 1 || rotate_interval > 8760)
+        throw std::invalid_argument("Rotate interval must be between 1 and 8760.");
 
     rotate_interval_ = rotate_interval;
 }
 
 void LoggerConfig::setRotateSize(size_t rotate_size)
 {
-    if (rotate_size == 0)
-        throw std::invalid_argument("Rotate size must be greater than 0.");
+    if (rotate_size < 1 || rotate_size > 1048576)
+        throw std::invalid_argument("Rotate size must be between 1 and 1048576.");
 
     rotate_size_ = rotate_size;
 }
 
 void LoggerConfig::setRotateCount(size_t rotate_count)
 {
-    if (rotate_count == 0)
-        throw std::invalid_argument("Rotate count must be greater than 0.");
+    if (rotate_count < 1 || rotate_count > 100)
+        throw std::invalid_argument("Rotate count must be between 1 and 100.");
 
     rotate_count_ = rotate_count;
 }

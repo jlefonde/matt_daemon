@@ -145,8 +145,8 @@ void Daemon::start()
             umask(0);
 
             close(STDIN_FILENO);
-            close(STDERR_FILENO);
             close(STDOUT_FILENO);
+            close(STDERR_FILENO);
 
             if (open("/dev/null", O_RDWR) == -1)
                 throw std::runtime_error(std::string("open /dev/null failed: ") + strerror(errno));
