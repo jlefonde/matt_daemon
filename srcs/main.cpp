@@ -1,13 +1,4 @@
-#include "Daemon.hpp"
-#include "Config.hpp"
-#include "getopt.h"
-
-#define ROOT_UID 0
-
-typedef struct s_context {
-    char    *config_path;
-    std::string config_path_abs;
-}   t_context;
+#include "main.hpp"
 
 static struct option long_options[] = {
     {"help",   no_argument,       0,  'h' },
