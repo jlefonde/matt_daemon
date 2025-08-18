@@ -19,28 +19,27 @@
 class Daemon
 {
 public:
-    Daemon();
+    Daemon(const std::string &config_path, const DaemonConfig &config, TintinReporter &logger, Server &server);
     ~Daemon();
     static void handleSignal(int sig);
-    bool initialize(int argc, char **argv);
+    void initialize();
     void updateConfig();
     void cleanup();
     void shutdown();
     void log(LogLevel log_level, const char *msg);
-    void showError(const char *msg);
 
 private:
+    Daemon();
     Daemon(const Daemon &daemon) = delete;
     Daemon &operator=(const Daemon &daemon) = delete;
-    bool parseArgs(int argc, char **argv);
+    void acquireLock();
     void addSignal(int sig);
-    void addSignals();
     void start();
     static Daemon *instance_;
-    DaemonConfig *config_;
+    DaemonConfig config_;
+    TintinReporter &logger_;
+    Server &server_;
     std::string config_path_;
-    std::unique_ptr<TintinReporter> logger_;
-    std::unique_ptr<Server> server_;
     int lock_fd_;
 };
 

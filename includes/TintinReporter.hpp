@@ -12,7 +12,7 @@
 class TintinReporter
 {
 public:
-    TintinReporter(const std::string& name, const LoggerConfig &config);
+    TintinReporter(const LoggerConfig &config, const std::string& name);
     ~TintinReporter();
     void log(LogLevel log_level, const char *msg);
     

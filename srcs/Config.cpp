@@ -5,11 +5,11 @@ static const std::string parseSectionHeader(const std::string &line, size_t line
 {
     size_t section_end = line.find_first_of(']');
     if (section_end == std::string::npos)
-        throw std::invalid_argument("Section has no end character ']' at line: " + std::to_string(line_nbr));
+        throw std::invalid_argument("Section has no end character ']' at line " + std::to_string(line_nbr) + ".");
 
     std::string section_name = line.substr(1, section_end - 1);
     if (section_name.empty())
-        throw std::invalid_argument("Section name can not be empty at line: " + std::to_string(line_nbr));
+        throw std::invalid_argument("Section name can not be empty at line " + std::to_string(line_nbr) + ".");
 
     std::string trailing_content = (section_end + 1 < line.length()) ? line.substr(section_end + 1) : "";
     
@@ -17,7 +17,7 @@ static const std::string parseSectionHeader(const std::string &line, size_t line
         ltrim(trailing_content);
 
     if (!trailing_content.empty() && trailing_content.front() != ';' && trailing_content.front() != '#')
-        throw std::invalid_argument("No content expected after the section end ']' at line: " + std::to_string(line_nbr));
+        throw std::invalid_argument("No content expected after the section end ']' at line " + std::to_string(line_nbr) + ".");
 
     return section_name;
 }
@@ -32,7 +32,7 @@ void Config::initializeSchema() {
             {"port", [this](const std::string &value) { server_config_.setPort(std::stoul(value)); }},
             {"max_connections", [this](const std::string &value) { server_config_.setMaxConnections(std::stoul(value)); }}
         }},
-        {"logging", {
+        {"logger", {
             {"log_file", [this](const std::string &value) { logger_config_.setLogFile(value); }},
             {"log_level", [this](const std::string &value) { logger_config_.setLogLevelFromStr(value); }},
             {"auto_rotate", [this](const std::string &value) { logger_config_.setAutoRotateFromStr(value); }},
@@ -43,62 +43,15 @@ void Config::initializeSchema() {
     };
 }
 
-Config::Config() {
+Config::Config()
+{
     initializeSchema();
 }
 
 Config::Config(const std::string &config_path) : config_path_(config_path)
 {
     initializeSchema();
-    std::ifstream config_ifs;
-
-    config_ifs.open(config_path_, std::ifstream::in);
-    if (!config_ifs.is_open())
-        throw std::runtime_error(std::string("open config failed: ") + strerror(errno));
-
-    char line[CONFIG_BUFFER_SIZE];
-    size_t line_nbr = 0;
-    std::string section_name;
-
-    while (config_ifs.getline(line, CONFIG_BUFFER_SIZE))
-    {
-        line_nbr++;
-
-        std::string line_str = std::string(line);
-
-        if (line_str.empty())
-            continue;
-
-        ltrim(line_str);
-        switch (line_str.front())
-        {
-            case ';':
-            case '#':
-                continue;
-            case '[':
-            {
-                section_name = parseSectionHeader(line_str, line_nbr);
-                break;
-            }
-            default:
-            {
-                if (section_name.empty())
-                    throw std::invalid_argument("Keys without section are not allowed at line: " + std::to_string(line_nbr));
-
-                std::stringstream ss(line_str);
-                std::string key;
-                std::string value;
-
-                getline(ss, key, '=');
-                getline(ss, value);
-
-                trim(key);
-                trim(value);
-
-                config_schema_.at(section_name).at(key)(value);
-            }
-        }
-    }
+    parse();
 }
 
 Config::Config(const Config &config)
@@ -164,7 +117,55 @@ void Config::setLoggerConfig(LoggerConfig &logger_config)
     logger_config_ = logger_config;
 }
 
-bool Config::parse()
+void Config::parse()
 {
-    return true;
+    std::ifstream config_ifs;
+
+    config_ifs.open(config_path_, std::ifstream::in);
+    if (!config_ifs.is_open())
+        throw std::runtime_error(std::string("open config failed: ") + strerror(errno));
+
+    char line[CONFIG_BUFFER_SIZE];
+    size_t line_nbr = 0;
+    std::string section_name;
+
+    while (config_ifs.getline(line, CONFIG_BUFFER_SIZE))
+    {
+        line_nbr++;
+
+        std::string line_str = std::string(line);
+
+        if (line_str.empty())
+            continue;
+
+        ltrim(line_str);
+        switch (line_str.front())
+        {
+            case ';':
+            case '#':
+                continue;
+            case '[':
+            {
+                section_name = parseSectionHeader(line_str, line_nbr);
+                break;
+            }
+            default:
+            {
+                if (section_name.empty())
+                    throw std::invalid_argument("Keys without section are not allowed at line " + std::to_string(line_nbr) + ".");
+
+                std::stringstream ss(line_str);
+                std::string key;
+                std::string value;
+
+                getline(ss, key, '=');
+                getline(ss, value);
+
+                trim(key);
+                trim(value);
+
+                config_schema_.at(section_name).at(key)(value);
+            }
+        }
+    }
 }

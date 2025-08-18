@@ -2,27 +2,17 @@
 
 Daemon* Daemon::instance_ = nullptr;
 
-Daemon::Daemon() :
-    logger_(nullptr),
-    server_(nullptr),
+Daemon::Daemon(const std::string &config_path, const DaemonConfig &config, TintinReporter &logger, Server &server) :
+    config_(config),
+    logger_(logger),
+    server_(server),
+    config_path_(config_path),
     lock_fd_(-1) {}
 
 Daemon::~Daemon()
 {
     if (lock_fd_ != -1)
         close(lock_fd_);
-}
-
-static void showHelper()
-{
-    std::cout << "Usage: MattDaemon [OPTIONS]\n"
-              << "\n"
-              << "A daemon with a server that listen on a specific port and register incoming data in a log file.\n"
-              << "\n"
-              << "OPTIONS:\n"
-              << "  -c <config_file>    Specify configuration file path\n"
-              << "  -h                  Show this help message and exit\n"
-              << std::endl;
 }
 
 void Daemon::handleSignal(int sig)
@@ -33,8 +23,7 @@ void Daemon::handleSignal(int sig)
     {
         std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
         instance_->log(INFO, signal_info.c_str());
-        instance_->server_->stop();
-        instance_->cleanup();
+        instance_->server_.stop();
     }
 }
 
@@ -53,110 +42,9 @@ void Daemon::addSignal(int sig)
     }
 }
 
-void Daemon::addSignals()
+void Daemon::acquireLock()
 {
-    addSignal(SIGHUP);
-    addSignal(SIGINT);
-    addSignal(SIGQUIT);
-    addSignal(SIGILL);
-    addSignal(SIGTRAP);
-    addSignal(SIGABRT);
-    addSignal(SIGUSR1);
-    addSignal(SIGSEGV);
-    addSignal(SIGUSR2);
-    addSignal(SIGPIPE);
-    addSignal(SIGALRM);
-    addSignal(SIGTERM);
-}
-
-bool Daemon::parseArgs(int argc, char **argv)
-{
-    if (geteuid() != 0)
-    {
-        std::cerr << "Error: Root privileges are required to run. Please run with sudo or as root user." << std::endl;
-        return false;
-    }
-
-    bool config_mode = false;
-
-    for (int i = 1; i < argc; i++)
-    {
-        if (argv[i][0] == '-')
-        {
-            if (strcmp(argv[i], "-c") == 0)
-                config_mode = true;
-            else if (strcmp(argv[i], "-h") == 0)
-            {
-                showHelper();
-                return false;
-            }
-            else
-            {
-                std::cerr << "Error: Unknown option '" << argv[i] << "'. Use -h for help." << std::endl;
-                return false;
-            }
-        }
-        else if (config_mode)
-        {
-            char absolute_path[PATH_MAX]; 
-            if (realpath(argv[i], absolute_path) == nullptr)
-            {
-                std::cerr << "Error: Cannot resolve path '" << argv[i] << "': " << strerror(errno) << std::endl;
-                return false;
-            }
-
-            config_path_ = absolute_path;
-            config_mode = false;
-        }
-        else
-        {
-            std::cerr << "Error: Unexpected argument '" << argv[i] << "'. Use -h for help." << std::endl;
-            return false;
-        }
-    }
-
-    if (config_mode)
-    {
-        std::cerr << "Error: Option -c requires a configuration file path. Use -h for help." << std::endl;
-        return false;
-    }
-
-    if (!config_path_.empty())
-    {
-        struct stat stats;
-        if (stat(config_path_.c_str(), &stats) == -1)
-        {
-            std::cerr << "Error: '" << config_path_ << "': " << strerror(errno) << std::endl;
-            return false;
-        }
-
-        if ((stats.st_mode & S_IFMT) != S_IFREG)
-        {
-            std::cerr << "Error: '" << config_path_ << "' must be a regular file." << std::endl;
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool Daemon::initialize(int argc, char **argv)
-{
-    if (!parseArgs(argc, argv))
-        return false;
-
-    std::unique_ptr<Config> config = config_path_.empty() 
-        ? std::make_unique<Config>()
-        : std::make_unique<Config>(config_path_);
-
-    config_ = &config->getDaemonConfig();
-    logger_ = std::make_unique<TintinReporter>("matt_daemon", config->getLoggerConfig());
-    server_ = std::make_unique<Server>(config->getServerConfig(), *logger_); 
-    instance_ = this;
-
-    logger_->log(INFO, "Started.");
-
-    lock_fd_ = open(config_->getLockFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+    lock_fd_ = open(config_.getLockFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
     if (lock_fd_ == -1)
         throw std::runtime_error(std::string("open lock failed: ") + strerror(errno));
 
@@ -167,12 +55,34 @@ bool Daemon::initialize(int argc, char **argv)
 
         throw std::runtime_error(std::string("flock failed: ") + strerror(errno));
     }
+}
 
-    addSignals();
+void Daemon::initialize()
+{
+    try {
+        instance_ = this;
 
-    start();
+        acquireLock();
 
-    return true;
+        addSignal(SIGHUP);
+        addSignal(SIGINT);
+        addSignal(SIGQUIT);
+        addSignal(SIGILL);
+        addSignal(SIGTRAP);
+        addSignal(SIGABRT);
+        addSignal(SIGUSR1);
+        addSignal(SIGSEGV);
+        addSignal(SIGUSR2);
+        addSignal(SIGPIPE);
+        addSignal(SIGALRM);
+        addSignal(SIGTERM);
+
+        start();
+    }
+    catch (const std::exception &e) {
+        logger_.log(ERROR, e.what());
+        logger_.log(INFO, "Quitting.");
+    }
 }
 
 void Daemon::start()
@@ -190,7 +100,7 @@ void Daemon::start()
             throw std::runtime_error(std::string("fork 2 failed: ") + strerror(errno));
         else if (pid == 0)
         {
-            int pid_fd = open(config_->getPidFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+            int pid_fd = open(config_.getPidFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
             if (pid_fd == -1)
                 throw std::runtime_error(std::string("open pid failed: ") + strerror(errno));
 
@@ -216,7 +126,7 @@ void Daemon::start()
             if (dup(0) == -1)
                 throw std::runtime_error(std::string("dup failed: ") + strerror(errno));
 
-            server_->run();
+            server_.run();
 
             cleanup();
         }
@@ -229,24 +139,22 @@ void Daemon::start()
 
 void Daemon::cleanup()
 {
-    logger_->log(INFO, "Quitting.");
-
-    remove(config_->getLockFile().c_str());
-    remove(config_->getPidFile().c_str());
+    if (remove(config_.getLockFile().c_str()) == -1)
+    {
+        std::string warning_msg = std::string("remove lock failed: ") + strerror(errno);
+        logger_.log(ERROR, warning_msg.c_str());
+    }
+    
+    if (remove(config_.getPidFile().c_str()) == -1)
+    {
+        std::string warning_msg = std::string("remove pid failed: ") + strerror(errno);
+        logger_.log(ERROR, warning_msg.c_str());
+    }
+    
+    logger_.log(INFO, "Quitting.");
 }
 
 void Daemon::log(LogLevel log_level, const char *msg)
 {
-    logger_->log(log_level, msg);
-}
-
-void Daemon::showError(const char *msg)
-{
-    if (logger_)
-    {
-        logger_->log(ERROR, msg);
-        logger_->log(INFO, "Quitting.");
-    }
-    else
-        std::cerr << "Error: " << msg << std::endl; 
+    logger_.log(log_level, msg);
 }

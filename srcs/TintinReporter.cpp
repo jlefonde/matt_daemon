@@ -53,12 +53,13 @@ void TintinReporter::openLogFile()
     stat(log_file.c_str(), &stats_);
 }
 
-TintinReporter::TintinReporter(const std::string& name, const LoggerConfig &config) :
+TintinReporter::TintinReporter(const LoggerConfig &config, const std::string& name) :
     config_(config),
     name_(name),
     rotate_count_(0)
 {
     openLogFile();
+    log(INFO, "Started.");
 }
 
 TintinReporter::~TintinReporter()
