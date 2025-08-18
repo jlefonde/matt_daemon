@@ -75,7 +75,7 @@ void Daemon::addSignal(int sig)
 
 void Daemon::acquireLock()
 {
-    lock_fd_ = open(config_.getLockFile().c_str(), O_CREAT | O_TRUNC | O_RDWR, 0644);
+    lock_fd_ = open(config_.getLockFile().c_str(), O_CREAT | O_RDWR, 0644);
     if (lock_fd_ == -1)
         throw std::runtime_error(std::string("open lock failed: ") + strerror(errno));
 
