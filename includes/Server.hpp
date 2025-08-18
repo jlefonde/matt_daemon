@@ -18,6 +18,8 @@ class Server
 public:
     Server(const ServerConfig &config, TintinReporter &logger);
     ~Server();
+    ServerConfig getConfig();
+    void setConfig(ServerConfig &config);
     void run();
     void stop();
 

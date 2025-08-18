@@ -17,19 +17,46 @@ Daemon::~Daemon()
 
 void Daemon::handleSignal(int sig)
 {
+    std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
+    instance_->log(INFO, signal_info.c_str());
+
     if (sig == SIGHUP)
         instance_->updateConfig();
     else
-    {
-        std::string signal_info = "Signal handler - " + std::string(strsignal(sig)) + " (" + std::to_string(sig) + ").";
-        instance_->log(INFO, signal_info.c_str());
         instance_->server_.stop();
-    }
 }
 
 void Daemon::updateConfig()
 {
+    try {
+        logger_.log(INFO, "Updating configuration.");
 
+        if (config_path_.empty()) {
+            logger_.log(WARNING, "No configuration file specified, cannot update configuration.");
+            return;
+        }
+
+        DaemonConfig daemon_config = config_;
+        ServerConfig server_config = server_.getConfig();
+        LoggerConfig logger_config = logger_.getConfig();
+        
+        // Validate configuration file syntax and structure
+        Config config(config_path_);
+
+        // Parse config with current values, applying only non-restart settings
+        Config newConfig(config_path_, daemon_config, server_config, logger_config);
+
+        config_ = newConfig.getDaemonConfig();
+        server_.setConfig(newConfig.getServerConfig());
+        logger_.setConfig(newConfig.getLoggerConfig());
+
+        logger_.log(INFO, "Configuration updated.");
+    }
+    catch (const std::exception &e)
+    {
+        std::string error_msg = "Failed to update configuration: " + std::string(e.what());
+        logger_.log(ERROR, error_msg.c_str());
+    }
 }
 
 void Daemon::addSignal(int sig)

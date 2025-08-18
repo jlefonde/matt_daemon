@@ -25,20 +25,20 @@ static const std::string parseSectionHeader(const std::string &line, size_t line
 void Config::initializeSchema() {
     config_schema_ = {
         {"daemon", {
-            {"lock_file", [this](const std::string &value) { daemon_config_.setLockFile(value); }},
-            {"pid_file", [this](const std::string &value) { daemon_config_.setPidFile(value); }}
+            {"lock_file", std::make_pair([this](const std::string &value) { daemon_config_.setLockFile(value); }, true)},
+            {"pid_file", std::make_pair([this](const std::string &value) { daemon_config_.setPidFile(value); }, true)}
         }},
         {"server", {
-            {"port", [this](const std::string &value) { server_config_.setPort(std::stoul(value)); }},
-            {"max_connections", [this](const std::string &value) { server_config_.setMaxConnections(std::stoul(value)); }}
+            {"port", std::make_pair([this](const std::string &value) { server_config_.setPort(std::stoul(value)); }, true)},
+            {"max_connections", std::make_pair([this](const std::string &value) { server_config_.setMaxConnections(std::stoul(value)); }, true)}
         }},
         {"logger", {
-            {"log_file", [this](const std::string &value) { logger_config_.setLogFile(value); }},
-            {"log_level", [this](const std::string &value) { logger_config_.setLogLevelFromStr(value); }},
-            {"auto_rotate", [this](const std::string &value) { logger_config_.setAutoRotateFromStr(value); }},
-            {"rotate_interval", [this](const std::string &value) { logger_config_.setRotateInterval(std::stoul(value)); }},
-            {"rotate_size", [this](const std::string &value) { logger_config_.setRotateSize(std::stoul(value)); }},
-            {"rotate_count", [this](const std::string &value) { logger_config_.setRotateCount(std::stoul(value)); }}
+            {"log_file", std::make_pair([this](const std::string &value) { logger_config_.setLogFile(value); }, false)},
+            {"log_level", std::make_pair([this](const std::string &value) { logger_config_.setLogLevelFromStr(value); }, false)},
+            {"auto_rotate", std::make_pair([this](const std::string &value) { logger_config_.setAutoRotateFromStr(value); }, false)},
+            {"rotate_interval", std::make_pair([this](const std::string &value) { logger_config_.setRotateInterval(std::stoul(value)); }, false)},
+            {"rotate_size", std::make_pair([this](const std::string &value) { logger_config_.setRotateSize(std::stoul(value)); }, false)},
+            {"rotate_count", std::make_pair([this](const std::string &value) { logger_config_.setRotateCount(std::stoul(value)); }, false)}
         }}
     };
 }
@@ -51,7 +51,22 @@ Config::Config()
 Config::Config(const std::string &config_path) : config_path_(config_path)
 {
     initializeSchema();
-    parse();
+
+    bool updating_config = false;
+    parse(updating_config);
+}
+
+Config::Config(const std::string &config_path, DaemonConfig &daemon_config, ServerConfig &server_config,
+    LoggerConfig &logger_config) : 
+    config_path_(config_path),
+    daemon_config_(daemon_config),
+    server_config_(server_config),
+    logger_config_(logger_config)
+{
+    initializeSchema();
+
+    bool updating_config = true;
+    parse(updating_config);
 }
 
 Config::Config(const Config &config)
@@ -117,7 +132,7 @@ void Config::setLoggerConfig(LoggerConfig &logger_config)
     logger_config_ = logger_config;
 }
 
-void Config::parse()
+void Config::parse(bool updating_config)
 {
     std::ifstream config_ifs;
 
@@ -128,6 +143,7 @@ void Config::parse()
     char line[CONFIG_BUFFER_SIZE];
     size_t line_nbr = 0;
     std::string section_name;
+    auto current_section = config_schema_.end();
 
     while (config_ifs.getline(line, CONFIG_BUFFER_SIZE))
     {
@@ -147,6 +163,10 @@ void Config::parse()
             case '[':
             {
                 section_name = parseSectionHeader(line_str, line_nbr);
+                current_section = config_schema_.find(section_name);
+                if (current_section == config_schema_.end())
+                    throw std::invalid_argument("Invalid section name at line " + std::to_string(line_nbr) + ".");
+
                 break;
             }
             default:
@@ -164,7 +184,12 @@ void Config::parse()
                 trim(key);
                 trim(value);
 
-                config_schema_.at(section_name).at(key)(value);
+                auto section_key = current_section->second.find(key);
+                if (section_key == current_section->second.end())
+                    throw std::invalid_argument("Invalid section key at line " + std::to_string(line_nbr) + ".");
+
+                if (!updating_config || (updating_config && !section_key->second.second))
+                    section_key->second.first(value);
             }
         }
     }

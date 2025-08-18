@@ -14,6 +14,8 @@ class TintinReporter
 public:
     TintinReporter(const LoggerConfig &config, const std::string& name);
     ~TintinReporter();
+    LoggerConfig getConfig();
+    void setConfig(LoggerConfig &config);
     void log(LogLevel log_level, const char *msg);
     
 private:

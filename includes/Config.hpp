@@ -21,6 +21,8 @@ class Config
 public:
     Config();
     Config(const std::string &config_path);
+    Config(const std::string &config_path, DaemonConfig &daemon_config, ServerConfig &server_config,
+        LoggerConfig &logger_config);
     Config(const Config &config);
     ~Config();
     Config &operator=(const Config &config);
@@ -34,9 +36,9 @@ public:
     void setLoggerConfig(LoggerConfig &logger_config);
     
 private:
-    std::unordered_map<std::string, std::unordered_map<std::string, std::function<void(const std::string &value)>>> config_schema_;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::pair<std::function<void(const std::string &)>, bool>>> config_schema_;
     void initializeSchema();
-    void parse();
+    void parse(bool restart_required);
     std::string config_path_;
     DaemonConfig daemon_config_;
     ServerConfig server_config_;

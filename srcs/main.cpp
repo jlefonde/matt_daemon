@@ -6,7 +6,7 @@
 
 typedef struct s_context {
     char    *config_path;
-    char    config_path_abs[PATH_MAX];
+    std::string config_path_abs;
 }   t_context;
 
 static struct option long_options[] = {
@@ -36,14 +36,17 @@ static Config createConfig(t_context *ctx)
         return config;
     }
 
-    if (realpath(ctx->config_path, ctx->config_path_abs) == NULL)
+    char resolved_path[PATH_MAX];
+    if (realpath(ctx->config_path, resolved_path) == NULL)
     {
         std::cerr << "Error: Cannot resolve path '" << ctx->config_path << "': " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 
+    ctx->config_path_abs = std::string(resolved_path);
+
     struct stat stats;
-    if (stat(ctx->config_path_abs, &stats) == -1)
+    if (stat(ctx->config_path_abs.c_str(), &stats) == -1)
     {
         std::cerr << "Error: '" << ctx->config_path << "': " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
@@ -68,6 +71,8 @@ int main(int argc, char **argv)
     }
 
     t_context ctx;
+    ctx.config_path = NULL;
+
     int ch;
     while ((ch = getopt_long(argc, argv, "hc:", long_options, NULL)) != -1)
     {
@@ -95,7 +100,7 @@ int main(int argc, char **argv)
         daemon.initialize();
     }
     catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
     catch (...) {

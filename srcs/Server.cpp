@@ -24,6 +24,16 @@ Server::~Server()
         close(epoll_fd_);
 }
 
+ServerConfig Server::getConfig()
+{
+    return config_;
+}
+
+void Server::setConfig(ServerConfig &config)
+{
+    config_ = config;
+}
+
 bool Server::addToEpoll(int fd, uint32_t events)
 {
     event_.events = events;
@@ -181,8 +191,11 @@ void Server::run()
         int nfds = epoll_wait(epoll_fd_, events_.data(), events_.size(), 1000);
         if (nfds == -1)
         {
-            std::string error_info = std::string("epoll_wait failed: ") + strerror(errno);
-            logger_.log(WARNING, error_info.c_str());
+            if (errno != EINTR)
+            {
+                std::string error_info = std::string("epoll_wait failed: ") + strerror(errno);
+                logger_.log(WARNING, error_info.c_str());
+            }
             continue;
         }
 

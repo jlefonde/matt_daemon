@@ -68,6 +68,16 @@ TintinReporter::~TintinReporter()
         log_file_ofs_.close();
 }
 
+LoggerConfig TintinReporter::getConfig()
+{
+    return config_;
+}
+
+void TintinReporter::setConfig(LoggerConfig &config)
+{
+    config_ = config;
+}
+
 void TintinReporter::rotateLogs(size_t log_msg_size)
 {
     time_t next_rotate = stats_.st_ctime + (config_.getRotateInterval() * 3600);
