@@ -1,4 +1,4 @@
-NAME = MattDaemon
+NAME = matt-daemon
 
 SOURCES_DIR = srcs
 HEADERS_DIR = includes
